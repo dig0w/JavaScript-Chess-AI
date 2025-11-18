@@ -1,0 +1,149 @@
+:root {
+    --light-square: 225, 212, 203;
+    --dark-square: 132, 161, 191;
+
+    --background-color: 25, 25, 25;
+
+    --font-color: 238, 238, 238;
+    --font: monospace;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+
+    background-color: rgba(var(--background-color), 1);
+
+    color: rgba(var(--font-color), 1);
+    font-family: var(--font);
+}
+
+body {
+    width: 100vw;
+    height: 100vh;
+
+    display: flex;
+    flex-direction: column;
+}
+
+.btn {
+    padding: .5rem 1rem;
+
+    outline: none;
+    border: 1px solid rgba(var(--font-color), 1);
+    background-color: transparent;
+
+    font-size: 18px;
+
+    cursor: pointer;
+}
+.btn:hover,.btn:focus {
+    border: 1px solid rgba(var(--font-color), .5);
+
+    color: rgba(var(--font-color), .5);
+}
+
+
+.menu-container {
+    height: 100%;
+
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 1rem;
+
+    overflow: hidden;
+}
+.menu-container h1 {
+    font-size: 48px;
+}
+.menu-container p {
+    font-size: 24px;
+}
+.menu-container .menu-buttons {
+    margin: 1rem 0;
+
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+}
+
+.menu-footer {
+    padding: 1rem;
+
+    display: flex;
+    justify-content: flex-end;
+}
+
+
+
+
+.game-container {
+    margin-top: 2rem;
+
+    height: 100%;
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 2rem;
+
+    overflow: hidden;
+}
+
+/* 4x4 board */
+.board {
+    width: auto;
+    height: 80%;
+    aspect-ratio: 1/1;
+
+    display: grid;
+    border: 3px solid rgba(var(--font-color), .5);
+}
+.square {
+    width: 100%;
+    height: 100%;
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    outline: none;
+    border: none;
+
+    font-size: 24px;
+
+    cursor: pointer;
+}
+/* Checkerboard pattern */
+.square {
+    background-color: rgba(var(--light-square), 1);
+}
+.square:hover,.square:focus {
+    background-color: rgba(var(--light-square), .5);
+}
+.square.dark {
+    background: rgba(var(--dark-square), 1);;
+}
+.square.dark:hover,.square.dark:focus {
+    background-color: rgba(var(--dark-square), .5);
+}
+.square.highlight::after {
+    width: 50%;
+    height: 50%;
+
+    border-radius: 50%;
+    background-color: rgba(var(--background-color), 1);
+}
+
+.sidebar {
+    padding: 1rem;
+
+    height: 80%;
+
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
