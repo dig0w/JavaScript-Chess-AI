@@ -100,7 +100,7 @@ body {
 }
 
 /* 4x4 board */
-.board {
+.game-container .board {
     width: auto;
     height: 80%;
     aspect-ratio: 1/1;
@@ -149,8 +149,25 @@ body {
     background-color: rgba(0, 0, 0, 0.3); /* or any color you want */
     pointer-events: none;
 }
+.game-container .main .opponent {
+    margin: 1rem 0;
 
-.sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: .5rem;
+}
+.game-container .main .opponent .captures {
+    display: flex;
+    gap: .75rem;
+}
+.game-container .main .opponent .captures ul {
+    display: flex;
+    gap: .3rem;
+
+    list-style: none;
+}
+
+.game-container .sidebar {
     padding: 1rem;
 
     height: 80%;

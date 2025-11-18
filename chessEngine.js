@@ -114,22 +114,22 @@ export class ChessEngine {
     getLegalMoves(r, c, piece) {
         const moves = [];
         const white = this.isWhite(piece);
-    
+
         const add = (rr, cc) => {
             if (!this.inside(rr, cc)) return;
-    
+
             const target = this.board[rr][cc];
-    
+
             if (target === '.') {
                 moves.push([rr, cc]);
                 return;
             }
-    
+
             // Capture enemy
             if (white && this.isBlack(target)) moves.push([rr, cc]);
             if (!white && this.isWhite(target)) moves.push([rr, cc]);
         };
-    
+
         const addSlide = (dr, dc) => {
             let rr = r + dr;
             let cc = c + dc;
@@ -146,22 +146,33 @@ export class ChessEngine {
                 cc += dc;
             }
         };
-    
+
         switch (piece.toLowerCase()) {
             // Pawn
             case 'p':
-                if (white) {
-                    add(r - 1, c);                    // forward
-                    if (this.isBlack(this.board[r - 1]?.[c])) add(r - 1, c);
-                    if (this.inside(r - 1, c - 1) && this.isBlack(this.board[r - 1][c - 1])) moves.push([r - 1, c - 1]);
-                    if (this.inside(r - 1, c + 1) && this.isBlack(this.board[r - 1][c + 1])) moves.push([r - 1, c + 1]);
-                } else {
-                    add(r + 1, c);
-                    if (this.inside(r + 1, c - 1) && this.isWhite(this.board[r + 1][c - 1])) moves.push([r + 1, c - 1]);
-                    if (this.inside(r + 1, c + 1) && this.isWhite(this.board[r + 1][c + 1])) moves.push([r + 1, c + 1]);
+                // direction: white moves up (r-1), black moves down (r+1)
+                const dir = white ? -1 : 1;
+                const forwardR = r + dir;
+
+                // 1) Forward move — only if inside and empty
+                if (this.inside(forwardR, c) && this.board[forwardR][c] === '.') {
+                    moves.push([forwardR, c]);
                 }
+
+                // 2) Diagonal captures — only if inside and enemy piece present
+                if (this.inside(forwardR, c - 1)) {
+                    const target = this.board[forwardR][c - 1];
+                    if (white && this.isBlack(target)) moves.push([forwardR, c - 1]);
+                    if (!white && this.isWhite(target)) moves.push([forwardR, c - 1]);
+                }
+                if (this.inside(forwardR, c + 1)) {
+                    const target = this.board[forwardR][c + 1];
+                    if (white && this.isBlack(target)) moves.push([forwardR, c + 1]);
+                    if (!white && this.isWhite(target)) moves.push([forwardR, c + 1]);
+                }
+
                 break;
-    
+
             // Knight
             case 'n':
                 [
@@ -171,7 +182,7 @@ export class ChessEngine {
                     [r + 1, c - 2], [r + 1, c + 2]
                 ].forEach(([rr, cc]) => add(rr, cc));
                 break;
-    
+
             // Bishop
             case 'b':
                 addSlide(-1, -1);
@@ -179,7 +190,7 @@ export class ChessEngine {
                 addSlide(1, -1);
                 addSlide(1, 1);
                 break;
-    
+
             // Rock
             case 'r':
                 addSlide(-1, 0);
@@ -187,7 +198,7 @@ export class ChessEngine {
                 addSlide(0, -1);
                 addSlide(0, 1);
                 break;
-    
+
             // Queen
             case 'q':
                 addSlide(-1, 0);
@@ -199,7 +210,7 @@ export class ChessEngine {
                 addSlide(1, -1);
                 addSlide(1, 1);
                 break;
-    
+
             // King
             case 'k':
                 [
@@ -209,7 +220,7 @@ export class ChessEngine {
                 ].forEach(([rr, cc]) => add(rr, cc));
                 break;
         }
-    
+
         return moves;
     }
 
