@@ -10,42 +10,21 @@ export class ChessEngine {
         this.rows = board.length;
         this.cols = board[0].length;
 
-        this.boardEl = document.getElementById('board');
-        this.turnDisplay = document.getElementById('turn-display');
-
         this.turn = 0;
-        this.selected = null;
-        this.possibleMoves = null;
-    }
+        this.whiteCaptures = [];
+        this.whiteCapturesPoints = 0;
+        this.blackCaptures = [];
+        this.blackCapturesPoints = 0;
 
-    BeginPlay() {
-        this.boardEl = document.getElementById('board');
-        this.turnDisplay = document.getElementById('turn-display');
-
-        this.boardEl.style.gridTemplateRows = `repeat(${this.rows}, minmax(0, 1fr))`;
-        this.boardEl.style.gridTemplateColumns = `repeat(${this.cols}, minmax(0, 1fr))`;
-
-        for (let r = 0; r < this.rows; r++) {
-            for (let c = 0; c < this.cols; c++) {
-                const sq = document.createElement('button');
-                sq.classList.add('square');
-                sq.dataset.r = r;
-                sq.dataset.c = c;
-
-                if ((r + c) % 2 === 0) {
-                    sq.classList.add('dark');
-                }
-
-                const piece = this.board[r][c];
-                if (piece !== '.') sq.textContent = piece;
-
-                sq.onclick = (e) => this.onSquareClick(e);
-
-                this.boardEl.appendChild(sq);
-            }
+        this.piecePoints = {
+            'p': 1,
+            'b': 3,
+            'n': 3,
+            'r': 5,
+            'q': 9,
         }
 
-        this.turnDisplay.textContent = this.turn == 0 ? 'White' : 'Black'
+        this.renderer = null;
     }
 
     onSquareClick(e) {
@@ -56,16 +35,18 @@ export class ChessEngine {
         if (this.selected && this.possibleMoves.some(([rr, cc]) => rr === r && cc === c)) {
 
             // Move the piece
-            this.MovePiece(r, c, this.selected.r, this.selected.c, this.selected.piece);
+            this.PieceToSquare(r, c, this.selected.piece);
+            this.PieceToSquare(r, c, '.');
+
 
             // Clear selection and highlights
             this.selected = null;
             this.possibleMoves = [];
             this.highlightMoves(this.possibleMoves);
 
-            // Switch turn
+            // switch turn
             this.turn = 1 - this.turn;
-            this.turnDisplay.textContent = this.turn == 0 ? 'White' : 'Black'
+            this.turnDisplay.texnewContent = this.turn == 0 ? 'White' : 'Black'
 
             return;
         }
@@ -224,17 +205,97 @@ export class ChessEngine {
         return moves;
     }
 
-    MovePiece(newR, newC, oldR, oldC, piece) {
-        // Move the piece
-        this.board[newR][newC] = piece;
-        this.board[oldR][oldC] = '.';
 
-        const oldSquare = this.boardEl.querySelector(`.square[data-r="${oldR}"][data-c="${oldC}"]`);
-        const newSquare = this.boardEl.querySelector(`.square[data-r="${newR}"][data-c="${newC}"]`);
 
-        if (oldSquare) oldSquare.textContent = this.board[oldR][oldC] !== '.' ? this.board[oldR][oldC] : '';
-        if (newSquare) newSquare.textContent = this.board[newR][newC] !== '.' ? this.board[newR][newC] : '';
+
+
+    MovePiece(fr, fc, tr, tc) {
+        if (!this.isLegalMove(fr, fc, tr, tc)) return
+
+        const movingPiece = this.board[fr][fc];
+        const targetPiece = this.board[tr][tc];
+
+        this.board[tr][tc] = movingPiece;
+        this.board[fr][fc] = '.';
+
+        if (!this.isEmpty(targetPiece) && this.isWhite(movingPiece) !== this.isWhite(targetPiece)) {
+            if (this.isWhite(movingPiece)) {
+                this.whiteCaptures.push(targetPiece);
+                this.whiteCapturesPoints += this.piecePoints[targetPiece];
+            } else {
+                this.blackCaptures.push(targetPiece);
+                this.blackCapturesPoints += this.piecePoints[targetPiece];
+            }
+        }
     }
+
+    isLegalMove(fr, fc, tr, tc) {
+        if (!this.inside(tr, tc)) return false;
+
+        const piece = this.board[fr][fc];
+            if (this.isEmpty(piece)) return false;
+
+        const white = this.isWhite(piece);
+        const target = this.board[tr][tc];
+
+        // Cannot capture your own piece
+        if (!this.isEmpty(target) && (white === this.isWhite(target))) return false;
+
+        const dr = tr - fr;
+        const dc = tc - fc;
+
+        const absR = Math.abs(dr);
+        const absC = Math.abs(dc);
+
+        switch (piece.toLowerCase()) {
+            // Pawn
+            case 'p':
+                if (white) {
+                    // Move forward into empty square
+                    if (dr === -1 && dc === 0 && this.isEmpty(target)) return true;
+
+                    // Capture diagonally
+                    if (dr === -1 && absC === 1 && this.isBlack(target)) return true;
+                } else {
+                    if (dr === 1 && dc === 0 && this.isEmpty(target)) return true;
+
+                    if (dr === 1 && absC === 1 && this.isWhite(target)) return true;
+                }
+                return false;
+
+            // Rook
+            case 'r':
+                if (dr !== 0 && dc !== 0) return false;
+                return this.isPathClear(fr, fc, tr, tc);
+
+            // Bishop
+            case 'b':
+                if (absR !== absC) return false;
+                return this.isPathClear(fr, fc, tr, tc);
+
+            // Queen
+            case 'q':
+                if (dr === 0 || dc === 0) return this.isPathClear(fr, fc, tr, tc);
+
+                if (absR === absC) return this.isPathClear(fr, fc, tr, tc);
+
+                return false;
+
+            // Knight
+            case 'n':
+                return (
+                    (absR === 2 && absC === 1) ||
+                    (absR === 1 && absC === 2)
+                );
+
+            // King
+            case 'k':
+                return absR <= 1 && absC <= 1;
+        }
+
+        return false;
+    }
+
 
     // check if (r,c) is inside board
     inside(r, c) {
@@ -254,5 +315,21 @@ export class ChessEngine {
     // check if piece is empty
     isEmpty(p) {
         return p ? p == '.' : null;
+    }
+
+    isPathClear(fr, fc, tr, tc) {
+        const stepR = Math.sign(tr - fr);
+        const stepC = Math.sign(tc - fc);
+
+        let r = fr + stepR;
+        let c = fc + stepC;
+
+        while (r !== tr || c !== tc) {
+            if (this.board[r][c] !== '.') return false;
+            r += stepR;
+            c += stepC;
+        }
+
+        return true;
     }
 }
