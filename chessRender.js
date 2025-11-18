@@ -103,7 +103,7 @@ export class ChessRender {
 
         const blurRecently = (new Date() - this.blurredTime) < 100;
 
-        // Case 1: clicking same square → deselect
+        // Case 1: clicking same square -> deselect
         if (clickedSame) {
             this.lastSelected = null;
             console.log("Deselected same square");
@@ -111,7 +111,7 @@ export class ChessRender {
             return;
         }
 
-        // Case 2: blur happened too recently → avoid unwanted deselection
+        // Case 2: blur happened too recently -> avoid unwanted deselection
         if (!blurRecently && this.lastSelected !== null) {
             this.lastSelected = null;
             console.log("Deselected due to blur timing");
@@ -119,6 +119,7 @@ export class ChessRender {
             return;
         }
 
+        // Case 3: has previous target and a valid new target -> move piece
         if (this.lastSelected != null) {
             console.log('Move from', this.lastSelected?.r, this.lastSelected?.c, 'to', r, c);
             this.engine.MovePiece(this.lastSelected?.r, this.lastSelected?.c, r, c);
@@ -133,23 +134,23 @@ export class ChessRender {
 
         const piece = this.engine.board[r][c];
 
-        // Case 3: click on empty square → clear selection
+        // Case 4: click on empty square -> clear selection
         if (this.engine.isEmpty(piece)) {
             this.lastSelected = null;
-            console.log("Clicked empty → clear selection");
+            console.log("Clicked empty -> clear selection");
             e.target.blur();
             return;
         }
 
-        // Case 4: click on piece of the oponent → clear selection
+        // Case 5: click on piece of the oponent → clear selection
         if ((this.engine.isWhite(piece) && this.engine.turn != 0) || (this.engine.isBlack(piece) && this.engine.turn != 1)) {
             this.lastSelected = null;
-            console.log("Clicked oponent piece → clear selection");
+            console.log("Clicked oponent piece -> clear selection");
             e.target.blur();
             return;
         }
 
-        // Case 5: click on a piece → select        
+        // Case 6: click on a piece -> select        
         this.lastSelected = { r, c };
     }
 
