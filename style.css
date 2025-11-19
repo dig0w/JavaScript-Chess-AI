@@ -1,6 +1,11 @@
 :root {
     --light-square: 225, 212, 203;
     --dark-square: 132, 161, 191;
+    --checked-square: 205, 0, 0;
+
+    --win-color: 133, 169, 78;
+    --draw-color: 100, 100, 100;
+    --lose-color: 168, 77, 77;
 
     --background-color: 25, 25, 25;
 
@@ -13,8 +18,6 @@
     margin: 0;
     padding: 0;
 
-    background-color: rgba(var(--background-color), 1);
-
     color: rgba(var(--font-color), 1);
     font-family: var(--font);
 }
@@ -25,6 +28,12 @@ body {
 
     display: flex;
     flex-direction: column;
+
+    background-color: rgba(var(--background-color), 1);
+}
+
+ul {
+    list-style: none;
 }
 
 .btn {
@@ -79,7 +88,6 @@ body {
 
 
 
-
 .game-container {
     height: 100%;
 
@@ -118,6 +126,7 @@ body {
 
     outline: none;
     border: none;
+    background-size: cover;
 
     font-size: 24px;
 
@@ -131,7 +140,7 @@ body {
     background-color: rgba(var(--light-square), .5);
 }
 .square.dark {
-    background: rgba(var(--dark-square), 1);;
+    background-color: rgba(var(--dark-square), 1);;
 }
 .square.dark:hover,.square.dark:focus {
     background-color: rgba(var(--dark-square), .5);
@@ -145,15 +154,22 @@ body {
     height: 40%;
 
     border-radius: 50%;
-    background-color: rgba(0, 0, 0, 0.3); /* or any color you want */
+    background-color: rgba(var(--background-color), 0.3);
     pointer-events: none;
 }
+.square.checked {
+    background-color: rgba(var(--checked-square), 1);
+}
+.square.checked:hover,.square.checked:focus {
+    background-color: rgba(var(--checked-square), .5);
+}
+
 .game-container .main .opponent {
-    margin: 1rem 0;
+    margin: .5rem 0;
 
     display: flex;
     flex-direction: column;
-    gap: .5rem;
+    gap: .3rem;
 }
 .game-container .main .opponent .captures {
     display: flex;
@@ -162,8 +178,6 @@ body {
 .game-container .main .opponent .captures ul {
     display: flex;
     gap: .3rem;
-
-    list-style: none;
 }
 
 .game-container .sidebar {
@@ -174,4 +188,69 @@ body {
     display: flex;
     flex-direction: column;
     gap: 1rem;
+}
+
+
+
+.popup-card {
+    position: fixed;
+    z-index: 100;
+
+    width: 100vw;
+    height: 100vh;
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    background-color: rgba(var(--background-color), 0.5);
+}
+.popup-card.hidden {
+    display: none;
+}
+.popup-card .card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+
+    width: 30%;
+    height: auto;
+    aspect-ratio: 4/3;
+}
+.popup-card .card > * {
+    padding: 2rem;
+
+    width: 100%;
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+.popup-card .card header {
+    height: 40%;
+
+    flex-direction: column;
+
+    border-top-left-radius: 1rem;
+    border-top-right-radius: 1rem;
+    background-color: rgba(var(--draw-color), 1);
+}
+.popup-card.won .card header {
+    background-color: rgba(var(--win-color), 1);
+}
+.popup-card.draw .card header {
+    background-color: rgba(var(--draw-color), 1);
+}
+.popup-card.lost .card header {
+    background-color: rgba(var(--lose-color), 1);
+}
+.popup-card .card main {
+    height: 60%;
+
+    justify-content: center;
+    align-items: center;
+
+    border-bottom-left-radius: 1rem;
+    border-bottom-right-radius: 1rem;
+    background-color: rgba(var(--background-color), 1);
 }

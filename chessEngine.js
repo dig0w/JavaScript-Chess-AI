@@ -1,18 +1,38 @@
+// [
+//         ['r', 'n', 'k', 'b', 'q'],
+//         ['p', 'p', 'p', 'p', 'p'],
+//         ['.', '.', '.', '.', '.'],
+//         ['P', 'P', 'P', 'P','P'],
+//         ['R', 'N', 'K', 'B', 'Q']
+//     ]
+
+// [
+//         ['.', '.', 'k', '.', '.'],
+//         ['.', '.', '.', '.', '.'],
+//         ['.', '.', '.', '.', '.'],
+//         ['P', 'P', 'P', 'P','P'],
+//         ['R', 'N', 'K', 'B', 'Q']
+//     ]
+
 export class ChessEngine {
     constructor(board = [
         ['r', 'n', 'k', 'b', 'q'],
         ['p', 'p', 'p', 'p', 'p'],
         ['.', '.', '.', '.', '.'],
-        ['P', 'P', 'P', 'P','P'],
-        ['R', 'N', 'K', 'B', 'Q']
+        ['.', '.', '.', '.','.'],
+        ['.', '.', 'K', '.', '.']
     ]) {
         this.board = board;
         this.rows = board.length;
         this.cols = board[0].length;
 
         this.turn = 0;
+
+        this.whiteKingChecked = false;
         this.whiteCaptures = [];
         this.whiteCapturesPoints = 0;
+
+        this.blackKingChecked = false;
         this.blackCaptures = [];
         this.blackCapturesPoints = 0;
 
@@ -22,195 +42,16 @@ export class ChessEngine {
             'n': 3,
             'r': 5,
             'q': 9,
+            'k': 0
         }
+
+        this.gameCondition = 'PLAYING';
 
         this.renderer = null;
     }
 
-    onSquareClick(e) {
-        const r = +e.target.dataset.r;
-        const c = +e.target.dataset.c;
-
-        // If there is a piece selected and clicked square is in possibleMoves → move it
-        if (this.selected && this.possibleMoves.some(([rr, cc]) => rr === r && cc === c)) {
-
-            // Move the piece
-            this.PieceToSquare(r, c, this.selected.piece);
-            this.PieceToSquare(r, c, '.');
-
-
-            // Clear selection and highlights
-            this.selected = null;
-            this.possibleMoves = [];
-            this.highlightMoves(this.possibleMoves);
-
-            // switch turn
-            this.turn = 1 - this.turn;
-            this.turnDisplay.texnewContent = this.turn == 0 ? 'White' : 'Black'
-
-            return;
-        }
-
-        const piece = this.board[r][c];
-
-        if (this.isEmpty(piece)) {
-            this.selected = null;
-            this.possibleMoves = [];
-            this.highlightMoves(this.possibleMoves);
-            e.target.blur();
-            return;
-        }
-
-        const isWhiteTurn = this.turn === 0;
-        const isWhitePiece = this.isWhite(piece);
-
-        // If wrong color piece clicked → ignore
-        if (isWhiteTurn !== isWhitePiece) {
-            this.selected = null;
-            this.possibleMoves = [];
-            this.highlightMoves(this.possibleMoves);
-            e.target.blur();
-            return;
-        }
-
-        // Select piece
-        this.selected = { r, c, piece };
-
-        // Get possible moves for this piece
-        this.possibleMoves = this.getLegalMoves(r, c, piece);
-
-        this.highlightMoves(this.possibleMoves);
-        console.log(this.possibleMoves);
-    }
-
-    highlightMoves(moves) {
-        document.querySelectorAll('.highlight').forEach(sq => sq.classList.remove('highlight'));
-
-        moves.forEach(([r, c]) => {
-            const sq = document.querySelector(`.square[data-r="${r}"][data-c="${c}"]`);
-            if (sq) sq.classList.add('highlight');
-        });
-    }
-
-    getLegalMoves(r, c, piece) {
-        const moves = [];
-        const white = this.isWhite(piece);
-
-        const add = (rr, cc) => {
-            if (!this.inside(rr, cc)) return;
-
-            const target = this.board[rr][cc];
-
-            if (target === '.') {
-                moves.push([rr, cc]);
-                return;
-            }
-
-            // Capture enemy
-            if (white && this.isBlack(target)) moves.push([rr, cc]);
-            if (!white && this.isWhite(target)) moves.push([rr, cc]);
-        };
-
-        const addSlide = (dr, dc) => {
-            let rr = r + dr;
-            let cc = c + dc;
-            while (this.inside(rr, cc)) {
-                const target = this.board[rr][cc];
-                if (target === '.') {
-                    moves.push([rr, cc]);
-                } else {
-                    if (white && this.isBlack(target)) moves.push([rr, cc]);
-                    if (!white && this.isWhite(target)) moves.push([rr, cc]);
-                    break;
-                }
-                rr += dr;
-                cc += dc;
-            }
-        };
-
-        switch (piece.toLowerCase()) {
-            // Pawn
-            case 'p':
-                // direction: white moves up (r-1), black moves down (r+1)
-                const dir = white ? -1 : 1;
-                const forwardR = r + dir;
-
-                // 1) Forward move — only if inside and empty
-                if (this.inside(forwardR, c) && this.board[forwardR][c] === '.') {
-                    moves.push([forwardR, c]);
-                }
-
-                // 2) Diagonal captures — only if inside and enemy piece present
-                if (this.inside(forwardR, c - 1)) {
-                    const target = this.board[forwardR][c - 1];
-                    if (white && this.isBlack(target)) moves.push([forwardR, c - 1]);
-                    if (!white && this.isWhite(target)) moves.push([forwardR, c - 1]);
-                }
-                if (this.inside(forwardR, c + 1)) {
-                    const target = this.board[forwardR][c + 1];
-                    if (white && this.isBlack(target)) moves.push([forwardR, c + 1]);
-                    if (!white && this.isWhite(target)) moves.push([forwardR, c + 1]);
-                }
-
-                break;
-
-            // Knight
-            case 'n':
-                [
-                    [r - 2, c - 1], [r - 2, c + 1],
-                    [r + 2, c - 1], [r + 2, c + 1],
-                    [r - 1, c - 2], [r - 1, c + 2],
-                    [r + 1, c - 2], [r + 1, c + 2]
-                ].forEach(([rr, cc]) => add(rr, cc));
-                break;
-
-            // Bishop
-            case 'b':
-                addSlide(-1, -1);
-                addSlide(-1, 1);
-                addSlide(1, -1);
-                addSlide(1, 1);
-                break;
-
-            // Rock
-            case 'r':
-                addSlide(-1, 0);
-                addSlide(1, 0);
-                addSlide(0, -1);
-                addSlide(0, 1);
-                break;
-
-            // Queen
-            case 'q':
-                addSlide(-1, 0);
-                addSlide(1, 0);
-                addSlide(0, -1);
-                addSlide(0, 1);
-                addSlide(-1, -1);
-                addSlide(-1, 1);
-                addSlide(1, -1);
-                addSlide(1, 1);
-                break;
-
-            // King
-            case 'k':
-                [
-                    [r - 1, c], [r + 1, c], [r, c - 1], [r, c + 1],
-                    [r - 1, c - 1], [r - 1, c + 1],
-                    [r + 1, c - 1], [r + 1, c + 1]
-                ].forEach(([rr, cc]) => add(rr, cc));
-                break;
-        }
-
-        return moves;
-    }
-
-
-
-
-
     MovePiece(fr, fc, tr, tc) {
-        if (!this.isLegalMove(fr, fc, tr, tc)) return
+        if (!this.isLegalMove(fr, fc, tr, tc) || this.gameCondition !== 'PLAYING') return;
 
         const movingPiece = this.board[fr][fc];
         const targetPiece = this.board[tr][tc];
@@ -221,11 +62,22 @@ export class ChessEngine {
         if (!this.isEmpty(targetPiece) && this.isWhite(movingPiece) !== this.isWhite(targetPiece)) {
             if (this.isWhite(movingPiece)) {
                 this.whiteCaptures.push(targetPiece);
-                this.whiteCapturesPoints += this.piecePoints[targetPiece];
+                this.whiteCapturesPoints += this.piecePoints[targetPiece.toLowerCase()];
             } else {
                 this.blackCaptures.push(targetPiece);
-                this.blackCapturesPoints += this.piecePoints[targetPiece];
+                this.blackCapturesPoints += this.piecePoints[targetPiece.toLowerCase()];
             }
+        }
+
+        this.SwitchTurn();
+
+        this.whiteKingChecked = this.isKingInCheck(true);
+        this.blackKingChecked = this.isKingInCheck(false);
+
+        const result = this.evaluateEndConditions();
+        if (result) {
+            this.gameCondition = result;
+            console.log('GAME OVER:', this.gameCondition);
         }
     }
 
@@ -252,32 +104,32 @@ export class ChessEngine {
             case 'p':
                 if (white) {
                     // Move forward into empty square
-                    if (dr === -1 && dc === 0 && this.isEmpty(target)) return true;
+                    if (dr === -1 && dc === 0 && this.isEmpty(target) && this.moveKeepsKingSafe(fr, fc, tr, tc)) return true;
 
                     // Capture diagonally
-                    if (dr === -1 && absC === 1 && this.isBlack(target)) return true;
+                    if (dr === -1 && absC === 1 && this.isBlack(target) && this.moveKeepsKingSafe(fr, fc, tr, tc)) return true;
                 } else {
-                    if (dr === 1 && dc === 0 && this.isEmpty(target)) return true;
+                    if (dr === 1 && dc === 0 && this.isEmpty(target) && this.moveKeepsKingSafe(fr, fc, tr, tc)) return true;
 
-                    if (dr === 1 && absC === 1 && this.isWhite(target)) return true;
+                    if (dr === 1 && absC === 1 && this.isWhite(target) && this.moveKeepsKingSafe(fr, fc, tr, tc)) return true;
                 }
                 return false;
 
             // Rook
             case 'r':
                 if (dr !== 0 && dc !== 0) return false;
-                return this.isPathClear(fr, fc, tr, tc);
+                return this.isPathClear(fr, fc, tr, tc) && this.moveKeepsKingSafe(fr, fc, tr, tc);
 
             // Bishop
             case 'b':
                 if (absR !== absC) return false;
-                return this.isPathClear(fr, fc, tr, tc);
+                return this.isPathClear(fr, fc, tr, tc) && this.moveKeepsKingSafe(fr, fc, tr, tc);
 
             // Queen
             case 'q':
-                if (dr === 0 || dc === 0) return this.isPathClear(fr, fc, tr, tc);
+                if (dr === 0 || dc === 0) return this.isPathClear(fr, fc, tr, tc) && this.moveKeepsKingSafe(fr, fc, tr, tc);
 
-                if (absR === absC) return this.isPathClear(fr, fc, tr, tc);
+                if (absR === absC) return this.isPathClear(fr, fc, tr, tc) && this.moveKeepsKingSafe(fr, fc, tr, tc);
 
                 return false;
 
@@ -286,16 +138,129 @@ export class ChessEngine {
                 return (
                     (absR === 2 && absC === 1) ||
                     (absR === 1 && absC === 2)
-                );
+                ) && this.moveKeepsKingSafe(fr, fc, tr, tc);
 
             // King
             case 'k':
-                return absR <= 1 && absC <= 1;
+                return absR <= 1 && absC <= 1 && this.moveKeepsKingSafe(fr, fc, tr, tc);
         }
 
         return false;
     }
 
+    getLegalMoves(fr, fc) {
+        const piece = this.board[fr][fc];
+            if (this.isEmpty(piece)) return [];
+
+        const moves = [];
+
+        for (let tr = 0; tr < this.rows; tr++) {
+            for (let tc = 0; tc < this.cols; tc++) {
+                if (this.isLegalMove(fr, fc, tr, tc)) {
+                    moves.push([tr, tc]);
+                }
+            }
+        }
+
+        return moves;
+    }
+
+    hasLegalMoves(white) {
+        for (let fr = 0; fr < this.rows; fr++) {
+            for (let fc = 0; fc < this.cols; fc++) {
+                const piece = this.board[fr][fc];
+                if (piece === '.' || this.isWhite(piece) !== white) continue;
+
+                // Try every square
+                for (let tr = 0; tr < this.rows; tr++) {
+                    for (let tc = 0; tc < this.cols; tc++) {
+
+                        if (!this.isLegalMove(fr, fc, tr, tc)) continue;
+
+                        // Simulate move
+                        const backupFrom = this.board[fr][fc];
+                        const backupTo   = this.board[tr][tc];
+
+                        this.board[tr][tc] = backupFrom;
+                        this.board[fr][fc] = '.';
+
+                        const kingInCheck = this.isKingInCheck(white);
+
+                        // Undo move
+                        this.board[fr][fc] = backupFrom;
+                        this.board[tr][tc] = backupTo;
+
+                        if (!kingInCheck) return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    isKingInCheck(white) {
+        const kingChar = white ? 'K' : 'k';
+        const kings = this.getPieces(kingChar);
+        const { r: kr, c: kc } = kings[0] ? kings[0] : { r: -1, c: -1 };
+
+        if (kr === -1) return true; // king missing → checkmate by definition
+
+        // Check all enemy moves: does any attack the king?
+        for (let r = 0; r < this.rows; r++) {
+            for (let c = 0; c < this.cols; c++) {
+                const p = this.board[r][c];
+                if (p === '.' || this.isWhite(p) === white) continue;
+
+                if (this.isLegalMove(r, c, kr, kc)) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    moveKeepsKingSafe(fr, fc, tr, tc) {
+        const board = this.board;
+
+        // Save original state
+        const moving = board[fr][fc];
+        const captured = board[tr][tc];
+
+        // Apply the move
+        board[tr][tc] = moving;
+        board[fr][fc] = '.';
+
+        // Does king survive?
+        const safe = !this.isKingInCheck(this.isWhite(moving));
+
+        // Undo move
+        board[fr][fc] = moving;
+        board[tr][tc] = captured;
+
+        return safe;
+    }
+    
+    evaluateEndConditions() {
+        const whiteTurn = this.turn === 0;
+
+        const kingInCheck = this.isKingInCheck(whiteTurn);
+        const hasMoves = this.hasLegalMoves(whiteTurn);
+
+        if (!hasMoves) {
+            if (kingInCheck) {
+                return whiteTurn ? 'BLACK_WINS_CHECKMATE' : 'WHITE_WINS_CHECKMATE';
+            } else {
+                return 'DRAW_STALEMATE';
+            }
+        }
+
+        return null;
+    }
+
+    SwitchTurn() {
+        this.turn = 1 - this.turn;
+    }
 
     // check if (r,c) is inside board
     inside(r, c) {
@@ -331,5 +296,19 @@ export class ChessEngine {
         }
 
         return true;
+    }
+
+    getPieces(piece) {
+        const pieces = []
+
+        for (let r = 0; r < this.rows; r++) {
+            for (let c = 0; c < this.cols; c++) {
+                if (this.board[r][c] === piece) {
+                    pieces.push({ r, c })
+                }
+            }
+        }
+
+        return pieces;
     }
 }

@@ -41,11 +41,30 @@
             <h2>Turn</h2>
             <div id="turn-display">White</div>
 
+            <h2>Log</h2>
+            <ul>
+                <li>
+                    <span>Q d6</span>
+                    <span>k d7</span>
+                </li>
+            </ul>
+
             <h2>Actions</h2>
             <button id="restart-btn" class="btn" onclick="window.location.reload()">Restart</button>
         </div>
     </main>
 
+    <section id="end-screen" class="popup-card hidden">
+        <div class="card">
+            <header>
+                <h1>White Won!</h1>
+                <p>by checkmate</p>
+            </header>
+            <main>
+                <button id="restart-btn" class="btn" onclick="window.location.reload()">Restart</button>
+            </main>
+        </div>
+    </section>
 </body>
 
 <script type="module">
