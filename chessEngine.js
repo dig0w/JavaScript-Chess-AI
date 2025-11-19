@@ -28,10 +28,12 @@ export class ChessEngine {
 
         this.turn = 0;
 
+        this.whiteAI = null;
         this.whiteKingChecked = false;
         this.whiteCaptures = [];
         this.whitePoints = 0;
 
+        this.blackAI = null;
         this.blackKingChecked = false;
         this.blackCaptures = [];
         this.blackPoints = 0;
@@ -63,7 +65,7 @@ export class ChessEngine {
             const isWhite = this.isWhite(movingPiece);
 
             if ((isWhite && tr === 0) || (!isWhite && tr === this.rows - 1)) {
-                this.renderer.Promote(fr, fc, tr, tc);
+                this.renderer?.Promote(fr, fc, tr, tc);
                 return;
             }
         }
@@ -92,6 +94,10 @@ export class ChessEngine {
 
         this.whiteKingChecked = this.isKingInCheck(true);
         this.blackKingChecked = this.isKingInCheck(false);
+
+        this.renderer?.UpdateSquare(fr, fc);
+        this.renderer?.UpdateSquare(tr, tc);
+        this.renderer?.UpdateGame();
 
         const result = this.evaluateEndConditions();
         if (result) {
@@ -177,6 +183,30 @@ export class ChessEngine {
             for (let tc = 0; tc < this.cols; tc++) {
                 if (this.isLegalMove(fr, fc, tr, tc)) {
                     moves.push([tr, tc]);
+                }
+            }
+        }
+
+        return moves;
+    }
+
+    getPlayerLegalMoves(white) {
+        const moves = [];
+
+        for (let fr = 0; fr < this.rows; fr++) {
+            for (let fc = 0; fc < this.cols; fc++) {
+                if ((white && this.isWhite(this.board[fr][fc])) || (!white && this.isBlack(this.board[fr][fc]))) {
+                    const legalTargets = this.getLegalMoves(fr, fc);
+
+                    for (const [tr, tc] of legalTargets) {
+                        moves.push({
+                            fr,
+                            fc,
+                            tr,
+                            tc,
+                            promote: null // or call your promotion logic later
+                        });
+                    }
                 }
             }
         }
@@ -366,6 +396,9 @@ export class ChessEngine {
 
     SwitchTurn() {
         this.turn = 1 - this.turn;
+
+        if (this.turn == 0 && this.whiteAI) this.whiteAI.Play();
+        if (this.turn == 1 && this.blackAI) this.blackAI.Play();
     }
 
     // check if (r,c) is inside board
@@ -422,5 +455,34 @@ export class ChessEngine {
         const file = String.fromCharCode('a'.charCodeAt(0) + c);
         const rank = (this.rows - r).toString();
         return file + rank;
+    }
+
+    evaluate() {
+        return this.whitePoints - this.blackPoints;
+    }
+
+    clone() {
+        const clone = new ChessEngine(
+            this.board.map(row => [...row]) // deep copy of board
+        );
+
+        clone.turn = this.turn;
+
+        clone.whiteKingChecked = this.whiteKingChecked;
+        clone.whiteCaptures = [...this.whiteCaptures];
+        clone.whitePoints = this.whitePoints;
+
+        clone.blackKingChecked = this.blackKingChecked;
+        clone.blackCaptures = [...this.blackCaptures];
+        clone.blackPoints = this.blackPoints;
+
+        clone.gameCondition = this.gameCondition;
+        clone.log = [...this.log];  // new array, not shared
+
+        clone.renderer = null;       // no UI
+        clone.whiteAI = null;        // prevent AI triggers
+        clone.blackAI = null;
+
+        return clone;
     }
 }

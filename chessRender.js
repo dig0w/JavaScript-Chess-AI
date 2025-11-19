@@ -170,7 +170,7 @@ export class ChessRender {
             this.whiteCaptures.children[0].appendChild(li);
         }
 
-        const whiteDiff = this.engine.whitePoints - this.engine.blackPoints;
+        const whiteDiff = this.engine.evaluate();
         this.whiteCaptures.children[1].textContent = whiteDiff === 0 ? '' : (whiteDiff > 0 ? `+${whiteDiff}` : `${whiteDiff}`);
 
 
@@ -182,7 +182,7 @@ export class ChessRender {
             this.blackCaptures.children[0].appendChild(li);
         }
 
-        const blackDiff = this.engine.blackPoints - this.engine.whitePoints;
+        const blackDiff = -whiteDiff;
         this.blackCaptures.children[1].textContent = blackDiff === 0 ? '' : (blackDiff > 0 ? `+${blackDiff}` : `${blackDiff}`);
     }
 
@@ -232,10 +232,6 @@ export class ChessRender {
         if (this.lastSelected != null && this.engine.isLegalMove(this.lastSelected?.r, this.lastSelected?.c, r, c)) {
             console.log('Move from', this.lastSelected?.r, this.lastSelected?.c, 'to', r, c);
             this.engine.MovePiece(this.lastSelected?.r, this.lastSelected?.c, r, c);
-
-            this.UpdateSquare(this.lastSelected?.r, this.lastSelected?.c);
-            this.UpdateSquare(r, c);
-            this.UpdateGame();
 
             this.lastSelected = null;
             this.desHighlightMoves();
@@ -296,10 +292,6 @@ export class ChessRender {
 
         this.engine.MovePiece(fr, fc, tr, tc, newPiece);
 
-        this.UpdateSquare(fr, fc);
-        this.UpdateSquare(tr, tc);
-        this.UpdateGame();
-        
         this.lastPromote = null;
         this.promotionScreen.classList.add('hidden');
         e.target.blur();

@@ -76,9 +76,12 @@
     import { delay } from './utils.js';
     import { ChessEngine } from './chessEngine.js';
     import { ChessRender } from './chessRender.js';
+    import { AIV1 } from './AI/ai_v1.js';
 
     const chess = new ChessEngine();
     const render = new ChessRender(chess);
+
+    const blackAI = new AIV1(chess);
 
     window.onload = async (e) => {
         render.BeginPlay();
