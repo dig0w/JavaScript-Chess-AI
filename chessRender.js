@@ -1,3 +1,5 @@
+import { delay } from './utils.js';
+
 export class ChessRender {
     constructor(engine = null) {
         this.engine = engine;
@@ -5,12 +7,15 @@ export class ChessRender {
 
         this.boardEl = null;
         this.turnDisplay = null;
+        this.logDisplay = null;
         this.whiteCaptures = null;
         this.blackCaptures = null;
+        this.promotionScreen = null;
         this.endScreen = null;
 
         this.lastSelected = null;
         this.blurredTime = null;
+        this.lastPromote = null;
 
         this.assetPrefix = 'assets/chess.com_';
     }
@@ -18,12 +23,17 @@ export class ChessRender {
     BeginPlay() {
         this.boardEl = document.getElementById('board');
         this.turnDisplay = document.getElementById('turn-display');
+        this.logDisplay = document.getElementById('log-display');
         this.whiteCaptures = document.getElementById('whiteOpponent').children[1];
         this.blackCaptures = document.getElementById('blackOpponent').children[1];
+        this.promotionScreen = document.getElementById('promotion-screen');
         this.endScreen = document.getElementById('end-screen');
 
         this.boardEl.style.gridTemplateRows = `repeat(${this.engine.rows}, minmax(0, 1fr))`;
         this.boardEl.style.gridTemplateColumns = `repeat(${this.engine.cols}, minmax(0, 1fr))`;
+        
+        this.promotionScreen.style.height = (100 / this.engine.rows) * 4 + '%';
+        this.promotionScreen.style.width = 100 / this.engine.cols + '%';
 
         for (let r = 0; r < this.engine.rows; r++) {
             for (let c = 0; c < this.engine.cols; c++) {
@@ -47,12 +57,24 @@ export class ChessRender {
 
         this.UpdateGame();
 
-        document.addEventListener('click', (e) => {
-            if (e.target.classList.contains('square')) return;
+        for (let i = 0; i < this.promotionScreen.children.length; i++) {
+            this.promotionScreen.children[i].onclick = (e) => this.onPromoClick(e);
+            this.promotionScreen.children[i].onblur = (e) => this.onPromoBlur(e);
+        }
 
-            if (this.lastSelected !== null) {
-                this.lastSelected = null;
-                this.desHighlightMoves();
+        document.addEventListener('click', (e) => {
+            if (!e.target.classList.contains('square')) {
+                if (this.lastSelected !== null) {
+                    this.lastSelected = null;
+                    this.desHighlightMoves();
+                }
+            }
+
+            if (!e.target.classList.contains('square') || (e.target.classList.contains('square') && !e.target.classList.contains('promotion'))) {
+                if (this.lastPromote !== null) {
+                    this.lastPromote = null;
+                    this.promotionScreen.classList.add('hidden');
+                }
             }
         });
     }
@@ -71,10 +93,13 @@ export class ChessRender {
         sq.style.backgroundImage = 'url(' + this.assetPrefix + (this.engine.isWhite(piece) ? 'w' : 'b') + piece.toLowerCase() + '.png)';
     }
 
-    UpdateGame() {
+    async UpdateGame() {
         this.UpdateCheck();
         this.UpdateCaptures();
         this.UpdateTurn();
+        this.UpdateLog();
+
+        await delay(200);
 
         switch (this.engine.gameCondition) {
             case 'WHITE_WINS_CHECKMATE':
@@ -100,6 +125,14 @@ export class ChessRender {
 
                 this.endScreen.children[0].children[0].children[0].textContent = 'Draw!';
                 this.endScreen.children[0].children[0].children[1].textContent = 'by stalemate';
+                break;
+            case 'DRAW_DEAD_POSITION':
+                this.endScreen.classList.remove('hidden');
+
+                this.endScreen.classList.add('draw');
+
+                this.endScreen.children[0].children[0].children[0].textContent = 'Draw!';
+                this.endScreen.children[0].children[0].children[1].textContent = 'by death position';
                 break;
             case 'PLAYING':
             default:
@@ -137,7 +170,7 @@ export class ChessRender {
             this.whiteCaptures.children[0].appendChild(li);
         }
 
-        const whiteDiff = this.engine.whiteCapturesPoints - this.engine.blackCapturesPoints;
+        const whiteDiff = this.engine.whitePoints - this.engine.blackPoints;
         this.whiteCaptures.children[1].textContent = whiteDiff === 0 ? '' : (whiteDiff > 0 ? `+${whiteDiff}` : `${whiteDiff}`);
 
 
@@ -149,12 +182,23 @@ export class ChessRender {
             this.blackCaptures.children[0].appendChild(li);
         }
 
-        const blackDiff = this.engine.blackCapturesPoints - this.engine.whiteCapturesPoints;
+        const blackDiff = this.engine.blackPoints - this.engine.whitePoints;
         this.blackCaptures.children[1].textContent = blackDiff === 0 ? '' : (blackDiff > 0 ? `+${blackDiff}` : `${blackDiff}`);
     }
 
     UpdateTurn() {
         this.turnDisplay.textContent = this.engine.turn == 0 ? 'White' : 'Black';
+    }
+
+    UpdateLog() {
+        this.logDisplay.innerHTML = '';
+
+        for (let i = 0; i < this.engine.log.length; i++) {
+            const li = document.createElement('li');
+            li.textContent = this.engine.log[i];
+
+            this.logDisplay.appendChild(li);
+        }
     }
 
     onSquareClick(e) {
@@ -242,5 +286,46 @@ export class ChessRender {
 
     desHighlightMoves() {
         document.querySelectorAll('.highlight').forEach(sq => sq.classList.remove('highlight'));
+    }
+
+    onPromoClick(e) {
+        const newPiece = e.target.dataset.piece;
+            if (!newPiece) return;
+
+        const { fr, fc, tr, tc } = this.lastPromote;
+
+        this.engine.MovePiece(fr, fc, tr, tc, newPiece);
+
+        this.UpdateSquare(fr, fc);
+        this.UpdateSquare(tr, tc);
+        this.UpdateGame();
+        
+        this.lastPromote = null;
+        this.promotionScreen.classList.add('hidden');
+        e.target.blur();
+    }
+    onPromoBlur(e) {
+        this.blurredTime = new Date();
+    }
+    async Promote(fr, fc, tr, tc) {
+        this.promotionScreen.classList.remove('black');
+        await delay(100);
+
+        this.lastPromote = { fr, fc, tr, tc };
+
+        // Compute vertical offset
+        const isBlack = tr !== 0;
+        const y = isBlack ? (tr - 3) * 25 : tr * 25;  // since you're dividing by 4
+
+        // Apply transform
+        this.promotionScreen.style.transform = `translate(${tc * 100}%, ${y}%)`;
+
+        if (isBlack) this.promotionScreen.classList.add('black');
+
+        this.promotionScreen.classList.remove('hidden');
+
+        // Focus first selectable piece
+        const first = this.promotionScreen.querySelector('[data-piece]');
+        if (first) first.focus();
     }
 }

@@ -10,6 +10,9 @@
 </head>
 
 <body>
+    <div class="back">
+        <button onclick="window.location.href='main.html'"><-</button>
+    </div>
 
     <main class="game-container">
         <div class="main">
@@ -24,6 +27,12 @@
                 </div>
             </div>
             <div id="board" class="board">
+                    <section id="promotion-screen" class="popup-promotion hidden">
+                        <button data-piece="q" class="square promotion queen"></button>
+                        <button data-piece="n" class="square promotion knight"></button>
+                        <button data-piece="r" class="square promotion rook"></button>
+                        <button data-piece="b" class="square promotion bishop"></button>
+                    </section>
             </div>
             <div id="whiteOpponent" class="opponent">
                 <h1>White</h1>
@@ -42,11 +51,7 @@
             <div id="turn-display">White</div>
 
             <h2>Log</h2>
-            <ul>
-                <li>
-                    <span>Q d6</span>
-                    <span>k d7</span>
-                </li>
+            <ul id="log-display">
             </ul>
 
             <h2>Actions</h2>
@@ -68,8 +73,7 @@
 </body>
 
 <script type="module">
-    const delay = ms => new Promise(res => setTimeout(res, ms));
-
+    import { delay } from './utils.js';
     import { ChessEngine } from './chessEngine.js';
     import { ChessRender } from './chessRender.js';
 
@@ -78,13 +82,6 @@
 
     window.onload = async (e) => {
         render.BeginPlay();
-
-        // await delay(1000);
-
-        // console.log("Moving a2 to a3");
-        // chess.MovePiece(3, 0, 2, 0)
-        // render.UpdateSquare(3, 0);
-        // render.UpdateSquare(2, 0);
     };
 </script>
 

@@ -19,8 +19,8 @@ export class ChessEngine {
         ['r', 'n', 'k', 'b', 'q'],
         ['p', 'p', 'p', 'p', 'p'],
         ['.', '.', '.', '.', '.'],
-        ['.', '.', '.', '.','.'],
-        ['.', '.', 'K', '.', '.']
+        ['P', 'P', 'P', 'P','P'],
+        ['R', 'N', 'K', 'B', 'Q']
     ]) {
         this.board = board;
         this.rows = board.length;
@@ -30,11 +30,11 @@ export class ChessEngine {
 
         this.whiteKingChecked = false;
         this.whiteCaptures = [];
-        this.whiteCapturesPoints = 0;
+        this.whitePoints = 0;
 
         this.blackKingChecked = false;
         this.blackCaptures = [];
-        this.blackCapturesPoints = 0;
+        this.blackPoints = 0;
 
         this.piecePoints = {
             'p': 1,
@@ -46,15 +46,27 @@ export class ChessEngine {
         }
 
         this.gameCondition = 'PLAYING';
+        this.log = [];
 
         this.renderer = null;
     }
 
-    MovePiece(fr, fc, tr, tc) {
+    MovePiece(fr, fc, tr, tc, promotePiece = null) {
         if (!this.isLegalMove(fr, fc, tr, tc) || this.gameCondition !== 'PLAYING') return;
 
-        const movingPiece = this.board[fr][fc];
+        const originalPiece = this.board[fr][fc];
+        let movingPiece = originalPiece;
+            if (promotePiece) movingPiece = this.turn == 0 ? promotePiece.toUpperCase() : promotePiece.toLowerCase();
         const targetPiece = this.board[tr][tc];
+
+        if (movingPiece.toLowerCase() === 'p' && !promotePiece) {
+            const isWhite = this.isWhite(movingPiece);
+
+            if ((isWhite && tr === 0) || (!isWhite && tr === this.rows - 1)) {
+                this.renderer.Promote(fr, fc, tr, tc);
+                return;
+            }
+        }
 
         this.board[tr][tc] = movingPiece;
         this.board[fr][fc] = '.';
@@ -62,12 +74,19 @@ export class ChessEngine {
         if (!this.isEmpty(targetPiece) && this.isWhite(movingPiece) !== this.isWhite(targetPiece)) {
             if (this.isWhite(movingPiece)) {
                 this.whiteCaptures.push(targetPiece);
-                this.whiteCapturesPoints += this.piecePoints[targetPiece.toLowerCase()];
             } else {
                 this.blackCaptures.push(targetPiece);
-                this.blackCapturesPoints += this.piecePoints[targetPiece.toLowerCase()];
             }
         }
+
+        this.whitePoints = 0;
+        this.blackPoints = 0;
+        for (const [key, value] of Object.entries(this.piecePoints)) {
+            this.whitePoints += this.getPieces(key.toLocaleUpperCase()).length * value;
+            this.blackPoints += this.getPieces(key.toLocaleLowerCase()).length * value;
+        }
+
+        this.logMove(fr, fc, tr, tc, originalPiece, targetPiece, promotePiece);
 
         this.SwitchTurn();
 
@@ -240,22 +259,109 @@ export class ChessEngine {
 
         return safe;
     }
+
+    insufficientMaterial() {
+        let pieces = [];
+        let bishops = [];
+
+        for (let r = 0; r < this.board.length; r++) {
+            for (let c = 0; c < this.board[r].length; c++) {
+                const p = this.board[r][c];
+                if (p === '.') continue;
+
+                pieces.push(p);
+
+                // Track bishop square color
+                if (p.toLowerCase() === 'b') {
+                    const isDark = (r + c) % 2 === 0;
+                    bishops.push(isDark);
+                }
+            }
+        }
+
+        // Strip kings so we only count minor pieces
+        const minors = pieces.filter(p => p.toLowerCase() !== 'k');
+
+        // 1) Kings only
+        if (minors.length === 0) return true;
+
+        // 2) Single minor piece (K+B vs K or K+N vs K)
+        if (minors.length === 1) {
+            const p = minors[0].toLowerCase();
+            if (p === 'b' || p === 'n') return true;
+            return false;
+        }
+
+        // 3) Two bishops and BOTH are on same color squares (K+BB vs K)
+        if (minors.length === 2 && minors.every(p => p.toLowerCase() === 'b')) {
+            const allDark = bishops.every(v => v === true);
+            const allLight = bishops.every(v => v === false);
+            if (allDark || allLight) return true;
+        }
+
+        // Anything else can mate
+        return false;
+    }
     
     evaluateEndConditions() {
         const whiteTurn = this.turn === 0;
 
-        const kingInCheck = this.isKingInCheck(whiteTurn);
-        const hasMoves = this.hasLegalMoves(whiteTurn);
-
-        if (!hasMoves) {
-            if (kingInCheck) {
+        if (!this.hasLegalMoves(whiteTurn)) {
+            if (this.isKingInCheck(whiteTurn)) {
                 return whiteTurn ? 'BLACK_WINS_CHECKMATE' : 'WHITE_WINS_CHECKMATE';
             } else {
                 return 'DRAW_STALEMATE';
             }
         }
 
+        if (this.insufficientMaterial()) {
+            return 'DRAW_DEAD_POSITION';
+        }
+
         return null;
+    }
+
+    logMove(fr, fc, tr, tc, movingPiece, targetPiece, promotePiece = null) {
+        let notation = '';
+        let pieceLetter = movingPiece.toLowerCase() === 'p' ? '' : movingPiece.toUpperCase();
+
+        // Capture?
+        const isCapture = !this.isEmpty(targetPiece);
+
+        // Origin + dest square names
+        const fromSq = this.squareName(fr, fc);
+        const toSq = this.squareName(tr, tc);
+
+        // Build notation
+        if (pieceLetter) notation += pieceLetter;
+
+        // Pawn captures show file of origin
+        if (!pieceLetter && isCapture) {
+            const file = String.fromCharCode('a'.charCodeAt(0) + fc);
+            notation += file;
+        }
+
+        if (isCapture) notation += 'x';
+
+        notation += toSq;
+
+        // Promotion
+        if (promotePiece) {
+            notation += '=' + promotePiece.toUpperCase();
+        }
+
+        // Check / mate
+        const whiteToMove = this.turn === 0; // before SwitchTurn
+        const opponentIsWhite = !whiteToMove;
+
+        const oppInCheck = this.isKingInCheck(opponentIsWhite);
+        const oppLegalMoves = this.hasLegalMoves(opponentIsWhite);
+
+        if (oppInCheck && !oppLegalMoves) notation += '#';
+        else if (oppInCheck && oppLegalMoves) notation += '+';
+
+        // Push to this.log
+        this.log.push(notation);
     }
 
     SwitchTurn() {
@@ -310,5 +416,11 @@ export class ChessEngine {
         }
 
         return pieces;
+    }
+
+    squareName(r, c) {
+        const file = String.fromCharCode('a'.charCodeAt(0) + c);
+        const rank = (this.rows - r).toString();
+        return file + rank;
     }
 }

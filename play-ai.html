@@ -7,24 +7,82 @@
     <title>Play vs AI | Mini Chess</title>
 
     <link rel="stylesheet" href="style.css">
-    <script src="play.js"></script>
 </head>
 
 <body>
+    <div class="back">
+        <button onclick="window.location.href='main.html'"><-</button>
+    </div>
 
     <main class="game-container">
-        <div id="board" class="board">
+        <div class="main">
+            <div id="blackOpponent" class="opponent">
+                <h1>Black</h1>
+
+                <div class="captures">
+                    <ul>
+                    </ul>
+
+                    <span>+15</span>
+                </div>
+            </div>
+            <div id="board" class="board">
+                    <section id="promotion-screen" class="popup-promotion hidden">
+                        <button data-piece="q" class="square promotion queen"></button>
+                        <button data-piece="n" class="square promotion knight"></button>
+                        <button data-piece="r" class="square promotion rook"></button>
+                        <button data-piece="b" class="square promotion bishop"></button>
+                    </section>
+            </div>
+            <div id="whiteOpponent" class="opponent">
+                <h1>White</h1>
+
+                <div class="captures">
+                    <ul>
+                    </ul>
+
+                    <span>+15</span>
+                </div>
+            </div>
         </div>
 
         <div class="sidebar">
             <h2>Turn</h2>
             <div id="turn-display">White</div>
 
+            <h2>Log</h2>
+            <ul id="log-display">
+            </ul>
+
             <h2>Actions</h2>
             <button id="restart-btn" class="btn" onclick="window.location.reload()">Restart</button>
         </div>
     </main>
 
+    <section id="end-screen" class="popup-card hidden">
+        <div class="card">
+            <header>
+                <h1>White Won!</h1>
+                <p>by checkmate</p>
+            </header>
+            <main>
+                <button id="restart-btn" class="btn" onclick="window.location.reload()">Restart</button>
+            </main>
+        </div>
+    </section>
 </body>
+
+<script type="module">
+    import { delay } from './utils.js';
+    import { ChessEngine } from './chessEngine.js';
+    import { ChessRender } from './chessRender.js';
+
+    const chess = new ChessEngine();
+    const render = new ChessRender(chess);
+
+    window.onload = async (e) => {
+        render.BeginPlay();
+    };
+</script>
 
 </html>
