@@ -2,6 +2,8 @@
     --light-square: 225, 212, 203;
     --dark-square: 132, 161, 191;
     --checked-square: 205, 0, 0;
+    --selected-square: 220, 195, 75;
+    --light-selected-square: 246, 235, 114;
 
     --win-color: 133, 169, 78;
     --draw-color: 100, 100, 100;
@@ -166,6 +168,18 @@ ul {
 .square.checked:hover, .square.checked:focus {
     background-color: rgba(var(--checked-square), .5);
 }
+.square.selected {
+    background-color: rgba(var(--selected-square), 1);;
+}
+.square.selected:hover, .square.selected:focus {
+    background-color: rgba(var(--selected-square), .5);
+}
+.square.light-selected {
+    background-color: rgba(var(--light-selected-square), 1);;
+}
+.square.light-selected:hover, .square.light-selected:focus {
+    background-color: rgba(var(--light-selected-square), .5);
+}
 
 .game-container .main .opponent {
     margin: .5rem 0;
@@ -190,9 +204,56 @@ ul {
 
     display: flex;
     flex-direction: column;
+    justify-content: space-between;
+    gap: 2rem;
+}
+.game-container .sidebar .turn {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
     gap: 1rem;
 }
+.game-container .sidebar .log {
+    height: 75%;
+    max-height: 75%;
 
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+}
+.game-container .sidebar .log ul {
+    padding-right: 1rem;
+    width: 100%;
+
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    justify-items: center;
+    gap: 1rem;
+
+    font-size: 20px;
+    font-weight: 600;
+
+
+    overflow-y: auto;
+    overflow-x: hidden;
+
+    scrollbar-color: rgba(var(--font-color), 1) transparent;
+    scrollbar-width: thin;
+    scrollbar-gutter: thin;
+}
+.game-container .sidebar .actions {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+.game-container .sidebar span {
+    font-size: 20px;
+}
+.game-container .sidebar div {
+    font-size: 28px;
+    font-weight: 600;
+}
 
 
 .popup-card {
@@ -233,6 +294,7 @@ ul {
     height: 40%;
 
     flex-direction: column;
+    gap: .5rem;
 
     border-top-left-radius: 1rem;
     border-top-right-radius: 1rem;
@@ -247,10 +309,13 @@ ul {
 .popup-card.lost .card header {
     background-color: rgba(var(--lose-color), 1);
 }
+.popup-card .card header p {
+    font-size: 20px;
+}
 .popup-card .card main {
     height: 60%;
 
-    justify-content: center;
+    justify-content: space-evenly;
     align-items: center;
 
     border-bottom-left-radius: 1rem;

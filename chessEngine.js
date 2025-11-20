@@ -52,6 +52,7 @@ export class ChessEngine {
 
         this.gameCondition = 'PLAYING';
         this.log = [];
+        this.lastMove = null;
 
         this.renderer = null;
     }
@@ -76,17 +77,17 @@ export class ChessEngine {
         this.board[tr][tc] = movingPiece;
         this.board[fr][fc] = '.';
 
-        if (!this.isEmpty(targetPiece) && this.isWhite(movingPiece) !== this.isWhite(targetPiece)) {
+        const isCapture = !this.isEmpty(targetPiece) && this.isWhite(movingPiece) !== this.isWhite(targetPiece);
+
+        if (isCapture) {
             if (this.isWhite(movingPiece)) {
                 this.whiteCaptures.push(targetPiece);
             } else {
                 this.blackCaptures.push(targetPiece);
             }
-
-            this.halfmoveClock = 0;
         }
 
-        if (movingPiece.toLowerCase() == 'p' || (!this.isEmpty(targetPiece) && this.isWhite(movingPiece) !== this.isWhite(targetPiece))) {
+        if (movingPiece.toLowerCase() == 'p' || isCapture) {
             this.halfmoveClock = 0;
         } else {
             this.halfmoveClock++;
@@ -106,6 +107,8 @@ export class ChessEngine {
         this.whiteKingChecked = this.isKingInCheck(true);
         this.blackKingChecked = this.isKingInCheck(false);
 
+        this.lastMove = { fr, fc, tr, tc };
+
         const result = this.evaluateEndConditions();
         if (result) {
             this.gameCondition = result;
@@ -117,6 +120,11 @@ export class ChessEngine {
         this.renderer?.UpdateSquare(fr, fc);
         this.renderer?.UpdateSquare(tr, tc);
         this.renderer?.UpdateGame();
+
+        if (promotePiece) return this.renderer?.PlaySound(3);
+        else if (this.whiteKingChecked || this.blackKingChecked) return this.renderer?.PlaySound(2);
+        else if (isCapture) return this.renderer?.PlaySound(1);
+        else return this.renderer?.PlaySound(0);
     }
 
     isLegalMove(fr, fc, tr, tc) {
@@ -188,15 +196,36 @@ export class ChessEngine {
 
     getLegalMoves(fr, fc) {
         const piece = this.board[fr][fc];
-            if (this.isEmpty(piece)) return [];
+        if (this.isEmpty(piece)) return [];
 
         const moves = [];
+        const isPawn = piece.toLowerCase() === 'p';
+        const isWhite = this.isWhite(piece);
+
+        // last rank based on side
+        const promoteRank = isWhite ? 0 : this.rows - 1;
 
         for (let tr = 0; tr < this.rows; tr++) {
             for (let tc = 0; tc < this.cols; tc++) {
-                if (this.isLegalMove(fr, fc, tr, tc)) {
-                    moves.push([tr, tc]);
+
+                if (!this.isLegalMove(fr, fc, tr, tc)) continue;
+
+                // -------- PROMOTION HANDLING ----------
+                if (isPawn && tr === promoteRank) {
+                    // add 4 promotion options
+                    const promoPieces = isWhite
+                        ? ['Q', 'R', 'B', 'N']
+                        : ['q', 'r', 'b', 'n'];
+
+                    for (const promote of promoPieces) {
+                        moves.push([ tr, tc, promote ]);
+                    }
+
+                    continue; // skip adding a normal move
                 }
+
+                // ---------- NORMAL MOVE ----------
+                moves.push([ tr, tc, null ]);
             }
         }
 
@@ -211,13 +240,13 @@ export class ChessEngine {
                 if ((white && this.isWhite(this.board[fr][fc])) || (!white && this.isBlack(this.board[fr][fc]))) {
                     const legalTargets = this.getLegalMoves(fr, fc);
 
-                    for (const [tr, tc] of legalTargets) {
+                    for (const [tr, tc, promote] of legalTargets) {
                         moves.push({
                             fr,
                             fc,
                             tr,
                             tc,
-                            promote: null // or call your promotion logic later
+                            promote: promote // or call your promotion logic later
                         });
                     }
                 }
@@ -349,9 +378,9 @@ export class ChessEngine {
     evaluateEndConditions() {
         const whiteTurn = this.turn === 0;
 
-        if (!this.hasLegalMoves(whiteTurn)) {
-            if (this.isKingInCheck(whiteTurn)) {
-                return whiteTurn ? 'BLACK_WINS_CHECKMATE' : 'WHITE_WINS_CHECKMATE';
+        if (!this.hasLegalMoves(!whiteTurn)) {
+            if (this.isKingInCheck(!whiteTurn)) {
+                return !whiteTurn ? 'BLACK_WINS_CHECKMATE' : 'WHITE_WINS_CHECKMATE';
             } else {
                 return 'DRAW_STALEMATE';
             }

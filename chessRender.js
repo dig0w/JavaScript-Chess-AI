@@ -18,6 +18,14 @@ export class ChessRender {
         this.lastPromote = null;
 
         this.assetPrefix = 'assets/chess.com_';
+        this.sounds = [
+            this.assetPrefix + 'move-self' + '.mp3',
+            this.assetPrefix + 'capture' + '.mp3',
+            this.assetPrefix + 'move-check' + '.mp3',
+            this.assetPrefix + 'promote' + '.mp3',
+            this.assetPrefix + 'castle' + '.mp3',
+        ]
+        this.playableSounds = [];
     }
 
     BeginPlay() {
@@ -62,6 +70,10 @@ export class ChessRender {
             this.promotionScreen.children[i].onblur = (e) => this.onPromoBlur(e);
         }
 
+        for (let i = 0; i < this.sounds.length; i++) {
+            this.playableSounds.push(new Audio(this.sounds[i]));
+        }
+
         document.addEventListener('click', (e) => {
             if (!e.target.classList.contains('square')) {
                 if (this.lastSelected !== null) {
@@ -98,6 +110,19 @@ export class ChessRender {
         this.UpdateCaptures();
         this.UpdateTurn();
         this.UpdateLog();
+
+        // Highlight last move
+        document.querySelectorAll('.selected').forEach(sq => sq.classList.remove('selected'));
+        document.querySelectorAll('.light-selected').forEach(sq => sq.classList.remove('light-selected'));
+        if (this.engine.lastMove) {
+            const fsq = this.boardEl.querySelector(`.square[data-r="${this.engine.lastMove.fr}"][data-c="${this.engine.lastMove.fc}"]`);
+                if (!fsq) return;
+            const tsq = this.boardEl.querySelector(`.square[data-r="${this.engine.lastMove.tr}"][data-c="${this.engine.lastMove.tc}"]`);
+                if (!tsq) return;
+            
+            fsq.classList.add('light-selected');
+            tsq.classList.add('selected');
+        }
 
         await delay(200);
 
@@ -184,6 +209,8 @@ export class ChessRender {
 
             this.logDisplay.appendChild(li);
         }
+
+        this.logDisplay.scrollTop = this.logDisplay.scrollHeight;
     }
 
     onSquareClick(e) {
@@ -313,5 +340,9 @@ export class ChessRender {
         // Focus first selectable piece
         const first = this.promotionScreen.querySelector('[data-piece]');
         if (first) first.focus();
+    }
+
+    PlaySound(type = 0) {
+        this.playableSounds[type].play();
     }
 }

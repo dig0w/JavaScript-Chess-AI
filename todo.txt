@@ -1,4 +1,4 @@
-AI Promote
+Piece-square tables
 
 Castle
 En passant pawn

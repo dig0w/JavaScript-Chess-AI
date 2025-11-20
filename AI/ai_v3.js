@@ -1,6 +1,6 @@
 import { delay } from '../utils.js';
 
-export class AIV2 {
+export class AIV3 {
     constructor(engine = null, playsWhite = false, depth = 6) {
         this.engine = engine;
         this.playsWhite = playsWhite;
@@ -27,8 +27,9 @@ export class AIV2 {
         const best = this.bestMove(this.depth);
             if (!best) return; // no legal moves
 
-
         await delay(500);
+
+        console.log(best);
 
         // Execute move on real engine
         this.engine.MovePiece(best.fr, best.fc, best.tr, best.tc, best.promote);
@@ -76,8 +77,11 @@ export class AIV2 {
             const copy = engineState.minimalClone();
             copy.MovePiece(move.fr, move.fc, move.tr, move.tc, move.promote);
 
+            let tactical = 0;
+            if (move.promote) tactical += 900; // free queen, basically
+            
             // Negamax
-            const score = -this.minimax(copy, depth - 1, -beta, -alpha);
+            const score = -this.minimax(copy, depth - 1, -beta, -alpha) + tactical;
 
             if (score > best) best = score;
             if (score > alpha) alpha = score;
@@ -95,6 +99,16 @@ export class AIV2 {
             for (let c = 0; c < engineState.cols; c++) {
                 const p = engineState.board[r][c];
                 if (!engineState.isEmpty(p)) score += this.piecePoints[p] || 0;
+
+                if (p === 'P') {
+                    if (r === 1) score += 800;  // one step from promoting
+                    else if (r === 2) score += 300;
+                }
+
+                if (p === 'p') {
+                    if (r === engineState.rows - 2) score -= 800;
+                    else if (r === engineState.rows - 3) score -= 300;
+                }
             }
         }
 

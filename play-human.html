@@ -47,15 +47,20 @@
         </div>
 
         <div class="sidebar">
-            <h2>Turn</h2>
-            <div id="turn-display">White</div>
+            <div class="turn">
+                <span>Turn</span>
+                <div id="turn-display">White</div>
+            </div>
 
-            <h2>Log</h2>
-            <ul id="log-display">
-            </ul>
+            <div class="log">
+                <span>Log</span>
+                <ul id="log-display"></ul>
+            </div>
 
-            <h2>Actions</h2>
-            <button id="restart-btn" class="btn" onclick="window.location.reload()">Restart</button>
+            <div class="actions">
+                <span>Actions</span>
+                <button id="restart-btn" class="btn" onclick="window.location.reload()">Restart</button>
+            </div>
         </div>
     </main>
 
@@ -67,6 +72,7 @@
             </header>
             <main>
                 <button id="restart-btn" class="btn" onclick="window.location.reload()">Restart</button>
+                <button id="restart-btn" class="btn" onclick="window.location.href='main.html'">Home</button>
             </main>
         </div>
     </section>

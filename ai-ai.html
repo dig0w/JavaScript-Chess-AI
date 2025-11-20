@@ -47,15 +47,20 @@
         </div>
 
         <div class="sidebar">
-            <h2>Turn</h2>
-            <div id="turn-display">White</div>
+            <div class="turn">
+                <span>Turn</span>
+                <div id="turn-display">White</div>
+            </div>
 
-            <h2>Log</h2>
-            <ul id="log-display">
-            </ul>
+            <div class="log">
+                <span>Log</span>
+                <ul id="log-display"></ul>
+            </div>
 
-            <h2>Actions</h2>
-            <button id="restart-btn" class="btn" onclick="window.location.reload()">Restart</button>
+            <div class="actions">
+                <span>Actions</span>
+                <button id="restart-btn" class="btn" onclick="window.location.reload()">Restart</button>
+            </div>
         </div>
     </main>
 
@@ -67,6 +72,7 @@
             </header>
             <main>
                 <button id="restart-btn" class="btn" onclick="window.location.reload()">Restart</button>
+                <button id="restart-btn" class="btn" onclick="window.location.href='main.html'">Home</button>
             </main>
         </div>
     </section>
@@ -78,13 +84,16 @@
     import { ChessRender } from './chessRender.js';
     import { AIV1 } from './AI/ai_v1.js';
     import { AIV2 } from './AI/ai_v2.js';
+    import { AIV3 } from './AI/ai_v3.js';
 
     const chess = new ChessEngine();
     const render = new ChessRender(chess);
 
     // const AI1W = new AIV1(chess, true, 2);
-    const AI2W = new AIV2(chess, true, 6);
-    const AI2B = new AIV2(chess, false, 6);
+    // const AI2W = new AIV2(chess, true, 2);
+    // const AI2B = new AIV2(chess, false, 2);
+    const AI3W = new AIV3(chess, true, 6);
+    const AI3B = new AIV3(chess, false, 6);
 
     window.onload = async (e) => {
         render.BeginPlay();
