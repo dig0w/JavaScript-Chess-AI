@@ -1,4 +1,15 @@
+v4
+Move ordering
 Piece-square tables
+
+v5
+Quiescence search
+Killer move heuristic
+
+v6
+Transposition Table
+History heuristic
+
 
 Castle
 En passant pawn

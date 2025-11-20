@@ -89,11 +89,14 @@
     const chess = new ChessEngine();
     const render = new ChessRender(chess);
 
-    // const AI1W = new AIV1(chess, true, 2);
-    // const AI2W = new AIV2(chess, true, 2);
-    // const AI2B = new AIV2(chess, false, 2);
-    const AI3W = new AIV3(chess, true, 6);
-    const AI3B = new AIV3(chess, false, 6);
+    const depth = 2;
+
+    const AI1W = new AIV1(chess, true, depth);
+    const AI1B = new AIV1(chess, false, depth);
+    // const AI2W = new AIV2(chess, true, depth);
+    // const AI2B = new AIV2(chess, false, depth);
+    // const AI3W = new AIV3(chess, true, depth);
+    // const AI3B = new AIV3(chess, false, depth);
 
     window.onload = async (e) => {
         render.BeginPlay();

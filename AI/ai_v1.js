@@ -9,21 +9,28 @@ export class AIV1 {
         else engine.blackAI = this;
 
         this.depth = depth;
+
+        this.nodes = 0;
+        this.totalNodes = 0;
     }
 
     async Play() {
-        await delay(500);
-
         const isWhiteTurn = this.engine.turn === 0;
         if (isWhiteTurn !== this.playsWhite) return;
         
         console.log("AI (" + (this.playsWhite ? "White" : "Black") + ") playing...");
 
+        this.nodes = 0;
+
         const best = this.bestMove(this.depth);
             if (!best) return; // no legal moves
 
+        await delay(1000);
 
-        await delay(500);
+        this.totalNodes += this.nodes;
+
+        console.log('Nodes searched:', this.nodes, 'Total nodes: ', this.totalNodes);
+        console.log('Best move:', best);
 
         // Execute move on real engine
         this.engine.MovePiece(best.fr, best.fc, best.tr, best.tc, best.promote);
@@ -33,7 +40,6 @@ export class AIV1 {
         const engine = this.engine;
 
         const moves = engine.getPlayerLegalMoves(engine.turn === 0);
-        console.log(moves);
 
         let bestScore = -Infinity;
         let bestMove = null;
@@ -54,6 +60,8 @@ export class AIV1 {
     }
 
     minimax(engineState, depth, alpha, beta) {
+        this.nodes++;
+
         // Terminal condition
         if (depth === 0 || engineState.gameCondition !== 'PLAYING') {
             return this.evaluate(engineState);

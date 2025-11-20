@@ -1,0 +1,15 @@
+8x8 normal chess (no castle, no en passant)
+
+depth = 2 (first moves)
+Nodes (move)	White		Black
+v1		        156 (a3)	156 (Na6)
+v2		        156 (e3)	288 (e6)
+v3		        156 (e3)	288 (e6)
+
+
+W vs B      Result      Nodes
+v1 vs v1    Draw TR     10182 - 9671
+v1 vs v2    Black Won   16990 - 21139
+v2 vs v2    Draw TR     19758 - 33544
+v2 vs v3    Draw TR     19758 - 33544
+v3 vs v3    Draw TR     19758 - 33544

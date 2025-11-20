@@ -14,13 +14,27 @@
 //         ['R', 'N', 'K', 'B', 'Q']
 //     ]
 
+// [
+//         ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
+//         ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
+//         ['.', '.', '.', '.', '.', '.', '.', '.'],
+//         ['.', '.', '.', '.', '.', '.', '.', '.'],
+//         ['.', '.', '.', '.', '.', '.', '.', '.'],
+//         ['.', '.', '.', '.', '.', '.', '.', '.'],
+//         ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'],
+//         ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
+//     ]
+
 export class ChessEngine {
     constructor(board = [
-        ['r', 'n', 'k', 'b', 'q'],
-        ['p', 'p', 'p', 'p', 'p'],
-        ['.', '.', '.', '.', '.'],
-        ['P', 'P', 'P', 'P','P'],
-        ['R', 'N', 'K', 'B', 'Q']
+        ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
+        ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
+        ['.', '.', '.', '.', '.', '.', '.', '.'],
+        ['.', '.', '.', '.', '.', '.', '.', '.'],
+        ['.', '.', '.', '.', '.', '.', '.', '.'],
+        ['.', '.', '.', '.', '.', '.', '.', '.'],
+        ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'],
+        ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
     ]) {
         this.board = board;
         this.rows = board.length;
@@ -53,6 +67,7 @@ export class ChessEngine {
         this.gameCondition = 'PLAYING';
         this.log = [];
         this.lastMove = null;
+        this.totalPlies = 0;
 
         this.renderer = null;
     }
@@ -102,12 +117,13 @@ export class ChessEngine {
             this.blackPoints += this.getPieces(key.toLocaleLowerCase()).length * value;
         }
 
-        this.logMove(fr, fc, tr, tc, originalPiece, targetPiece, promotePiece);
-
+        
         this.whiteKingChecked = this.isKingInCheck(true);
         this.blackKingChecked = this.isKingInCheck(false);
-
+        
+        this.logMove(fr, fc, tr, tc, originalPiece, targetPiece, promotePiece);
         this.lastMove = { fr, fc, tr, tc };
+        this.totalPlies++;
 
         const result = this.evaluateEndConditions();
         if (result) {
@@ -561,6 +577,7 @@ export class ChessEngine {
         clone.positionHistory = [...this.positionHistory];
 
         clone.gameCondition = this.gameCondition;
+        clone.totalPlies = this.totalPlies;
 
         return clone;
     }
