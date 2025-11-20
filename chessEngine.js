@@ -59,7 +59,16 @@ export class ChessEngine {
             'r': 5,
             'q': 9,
             'k': 0
-        }
+        };
+
+        this.promoPieces = ['q', 'r', 'b', 'n'];
+
+        this.castlingRights = {
+            whiteKingSide: true,
+            whiteQueenSide: true,
+            blackKingSide: true,
+            blackQueenSide: true
+        };
 
         this.halfmoveClock = 0;
         this.positionHistory = [];
@@ -75,11 +84,13 @@ export class ChessEngine {
     MovePiece(fr, fc, tr, tc, promotePiece = null) {
         if (!this.isLegalMove(fr, fc, tr, tc) || this.gameCondition !== 'PLAYING') return;
 
+        // Get pieces
         const originalPiece = this.board[fr][fc];
         let movingPiece = originalPiece;
             if (promotePiece) movingPiece = this.turn == 0 ? promotePiece.toUpperCase() : promotePiece.toLowerCase();
         const targetPiece = this.board[tr][tc];
 
+        // Promote
         if (movingPiece.toLowerCase() === 'p' && !promotePiece) {
             const isWhite = this.isWhite(movingPiece);
 
@@ -89,11 +100,36 @@ export class ChessEngine {
             }
         }
 
+        // Castling
+        let castle = 0;
+        if (movingPiece.toLowerCase() === 'k' && Math.abs(tc - fc) === 2) {
+            if (tc === 6) { // King-side
+                console.log('King');
+                this.board[tr][5] = this.board[tr][7];
+                this.board[tr][7] = '.';
+
+                this.renderer?.UpdateSquare(tr, 5);
+                this.renderer?.UpdateSquare(tr, 7);
+
+                castle = 1;
+            } else if (tc === 2) { // Queen-side
+                console.log('Queen');
+                this.board[tr][3] = this.board[tr][0];
+                this.board[tr][0] = '.';
+
+                this.renderer?.UpdateSquare(tr, 3);
+                this.renderer?.UpdateSquare(tr, 0);
+
+                castle = 2;
+            }
+        }
+
+        // Move piece
         this.board[tr][tc] = movingPiece;
         this.board[fr][fc] = '.';
 
+        // Capture        
         const isCapture = !this.isEmpty(targetPiece) && this.isWhite(movingPiece) !== this.isWhite(targetPiece);
-
         if (isCapture) {
             if (this.isWhite(movingPiece)) {
                 this.whiteCaptures.push(targetPiece);
@@ -102,14 +138,13 @@ export class ChessEngine {
             }
         }
 
-        if (movingPiece.toLowerCase() == 'p' || isCapture) {
-            this.halfmoveClock = 0;
-        } else {
-            this.halfmoveClock++;
-        }
+        // Draw rules
+        if (movingPiece.toLowerCase() == 'p' || isCapture) this.halfmoveClock = 0;
+        else this.halfmoveClock++;
 
         this.positionHistory.push(this.getPosition());
 
+        // Piece points
         this.whitePoints = 0;
         this.blackPoints = 0;
         for (const [key, value] of Object.entries(this.piecePoints)) {
@@ -117,22 +152,43 @@ export class ChessEngine {
             this.blackPoints += this.getPieces(key.toLocaleLowerCase()).length * value;
         }
 
-        
+        // King check
         this.whiteKingChecked = this.isKingInCheck(true);
         this.blackKingChecked = this.isKingInCheck(false);
-        
-        this.logMove(fr, fc, tr, tc, originalPiece, targetPiece, promotePiece);
+
+        // Castle rights
+        if (movingPiece.toLowerCase() === 'k') {
+            if (this.isWhite(movingPiece)) {
+                this.castlingRights.whiteKingSide = false;
+                this.castlingRights.whiteQueenSide = false;
+            } else {
+                this.castlingRights.blackKingSide = false;
+                this.castlingRights.blackQueenSide = false;
+            }
+        }
+        if (movingPiece.toLowerCase() === 'r') {
+            if (fr === 7 && fc === 0) this.castlingRights.whiteQueenSide = false;
+            if (fr === 7 && fc === 7) this.castlingRights.whiteKingSide = false;
+            if (fr === 0 && fc === 0) this.castlingRights.blackQueenSide = false;
+            if (fr === 0 && fc === 7) this.castlingRights.blackKingSide = false;
+        }
+
+        // Save move
+        this.logMove(fr, fc, tr, tc, originalPiece, targetPiece, promotePiece, castle);
         this.lastMove = { fr, fc, tr, tc };
         this.totalPlies++;
 
+        // Game condition
         const result = this.evaluateEndConditions();
         if (result) {
             this.gameCondition = result;
             console.log('GAME OVER:', this.gameCondition);
         }
 
+        // Switch turn
         this.SwitchTurn();
 
+        // UI
         this.renderer?.UpdateSquare(fr, fc);
         this.renderer?.UpdateSquare(tr, tc);
         this.renderer?.UpdateGame();
@@ -176,17 +232,14 @@ export class ChessEngine {
                     if (dr === 1 && absC === 1 && this.isWhite(target) && this.moveKeepsKingSafe(fr, fc, tr, tc)) return true;
                 }
                 return false;
-
             // Rook
             case 'r':
                 if (dr !== 0 && dc !== 0) return false;
                 return this.isPathClear(fr, fc, tr, tc) && this.moveKeepsKingSafe(fr, fc, tr, tc);
-
             // Bishop
             case 'b':
                 if (absR !== absC) return false;
                 return this.isPathClear(fr, fc, tr, tc) && this.moveKeepsKingSafe(fr, fc, tr, tc);
-
             // Queen
             case 'q':
                 if (dr === 0 || dc === 0) return this.isPathClear(fr, fc, tr, tc) && this.moveKeepsKingSafe(fr, fc, tr, tc);
@@ -194,17 +247,65 @@ export class ChessEngine {
                 if (absR === absC) return this.isPathClear(fr, fc, tr, tc) && this.moveKeepsKingSafe(fr, fc, tr, tc);
 
                 return false;
-
             // Knight
             case 'n':
                 return (
                     (absR === 2 && absC === 1) ||
                     (absR === 1 && absC === 2)
                 ) && this.moveKeepsKingSafe(fr, fc, tr, tc);
-
             // King
             case 'k':
-                return absR <= 1 && absC <= 1 && this.moveKeepsKingSafe(fr, fc, tr, tc);
+                if (absR <= 1 && absC <= 1 && this.moveKeepsKingSafe(fr, fc, tr, tc)) return true;
+
+                // Castling
+                if (white) {
+                    if (fr === 7 && fc === 4) {
+                        // King-side
+                        if (tr === 7 && tc === 6 &&
+                            this.castlingRights.whiteKingSide &&
+                            this.isEmpty(this.board[7][5]) &&
+                            this.isEmpty(this.board[7][6]) &&
+                            !this.isSquareAttacked(7, 4, true) &&
+                            !this.isSquareAttacked(7, 5, true) &&
+                            !this.isSquareAttacked(7, 6, true)
+                        ) return true;
+
+                        // Queen-side
+                        if (tr === 7 && tc === 2 &&
+                            this.castlingRights.whiteQueenSide &&
+                            this.isEmpty(this.board[7][1]) &&
+                            this.isEmpty(this.board[7][2]) &&
+                            this.isEmpty(this.board[7][3]) &&
+                            !this.isSquareAttacked(7, 4, true) &&
+                            !this.isSquareAttacked(7, 3, true) &&
+                            !this.isSquareAttacked(7, 2, true)
+                        ) return true;
+                    }
+                } else {
+                    if (fr === 0 && fc === 4) {
+                        // King-side
+                        if (tr === 0 && tc === 6 &&
+                            this.castlingRights.blackKingSide &&
+                            this.isEmpty(this.board[0][5]) &&
+                            this.isEmpty(this.board[0][6]) &&
+                            !this.isSquareAttacked(0, 4, false) &&
+                            !this.isSquareAttacked(0, 5, false) &&
+                            !this.isSquareAttacked(0, 6, false)
+                        ) return true;
+
+                        // Queen-side
+                        if (tr === 0 && tc === 2 &&
+                            this.castlingRights.blackQueenSide &&
+                            this.isEmpty(this.board[0][1]) &&
+                            this.isEmpty(this.board[0][2]) &&
+                            this.isEmpty(this.board[0][3]) &&
+                            !this.isSquareAttacked(0, 4, false) &&
+                            !this.isSquareAttacked(0, 3, false) &&
+                            !this.isSquareAttacked(0, 2, false)
+                        ) return true;
+                    }
+                }
+                return false;
         }
 
         return false;
@@ -226,21 +327,15 @@ export class ChessEngine {
 
                 if (!this.isLegalMove(fr, fc, tr, tc)) continue;
 
-                // -------- PROMOTION HANDLING ----------
+                // Promotion
                 if (isPawn && tr === promoteRank) {
-                    // add 4 promotion options
-                    const promoPieces = isWhite
-                        ? ['Q', 'R', 'B', 'N']
-                        : ['q', 'r', 'b', 'n'];
-
-                    for (const promote of promoPieces) {
+                    for (const promote of this.promoPieces) {
                         moves.push([ tr, tc, promote ]);
                     }
 
-                    continue; // skip adding a normal move
+                    continue;
                 }
 
-                // ---------- NORMAL MOVE ----------
                 moves.push([ tr, tc, null ]);
             }
         }
@@ -262,7 +357,7 @@ export class ChessEngine {
                             fc,
                             tr,
                             tc,
-                            promote: promote // or call your promotion logic later
+                            promote: promote
                         });
                     }
                 }
@@ -305,26 +400,30 @@ export class ChessEngine {
         return false;
     }
 
-    isKingInCheck(white) {
-        const kingChar = white ? 'K' : 'k';
-        const kings = this.getPieces(kingChar);
-        const { r: kr, c: kc } = kings[0] ? kings[0] : { r: -1, c: -1 };
-
-        if (kr === -1) return true; // king missing → checkmate by definition
-
-        // Check all enemy moves: does any attack the king?
+    isSquareAttacked(fr, fc, white = this.isWhite(this.board[fr][fc])) {
+        // Check all enemy moves
         for (let r = 0; r < this.rows; r++) {
             for (let c = 0; c < this.cols; c++) {
                 const p = this.board[r][c];
                 if (p === '.' || this.isWhite(p) === white) continue;
 
-                if (this.isLegalMove(r, c, kr, kc)) {
+                if (this.isLegalMove(r, c, fr, fc)) {
                     return true;
                 }
             }
         }
 
         return false;
+    }
+
+    isKingInCheck(white) {
+        const kingChar = white ? 'K' : 'k';
+        const kings = this.getPieces(kingChar);
+        const { r: kr, c: kc } = kings[0] ? kings[0] : { r: -1, c: -1 };
+
+        if (kr === -1) return true; // king missing = checkmate by definition
+
+        return this.isSquareAttacked(kr, kc)
     }
 
     moveKeepsKingSafe(fr, fc, tr, tc) {
@@ -334,7 +433,7 @@ export class ChessEngine {
         const moving = board[fr][fc];
         const captured = board[tr][tc];
 
-        // Apply the move
+        // Simulate move
         board[tr][tc] = moving;
         board[fr][fc] = '.';
 
@@ -418,33 +517,41 @@ export class ChessEngine {
         return null;
     }
 
-    logMove(fr, fc, tr, tc, movingPiece, targetPiece, promotePiece = null) {
+    logMove(fr, fc, tr, tc, movingPiece, targetPiece, promotePiece = null, castle = 0) {
         let notation = '';
-        let pieceLetter = movingPiece.toLowerCase() === 'p' ? '' : movingPiece.toUpperCase();
 
-        // Capture?
-        const isCapture = !this.isEmpty(targetPiece);
+        // Handle castling first
+        if (castle === 1) {          // King-side castling
+            notation = 'O-O';
+        } else if (castle === 2) {   // Queen-side castling
+            notation = 'O-O-O';
+        } else {
+            let pieceLetter = movingPiece.toLowerCase() === 'p' ? '' : movingPiece.toUpperCase();
 
-        // Origin + dest square names
-        const fromSq = this.squareName(fr, fc);
-        const toSq = this.squareName(tr, tc);
+            // Capture?
+            const isCapture = !this.isEmpty(targetPiece);
 
-        // Build notation
-        if (pieceLetter) notation += pieceLetter;
+            // Origin + dest square names
+            const fromSq = this.squareName(fr, fc);
+            const toSq = this.squareName(tr, tc);
 
-        // Pawn captures show file of origin
-        if (!pieceLetter && isCapture) {
-            const file = String.fromCharCode('a'.charCodeAt(0) + fc);
-            notation += file;
-        }
+            // Build notation
+            if (pieceLetter) notation += pieceLetter;
 
-        if (isCapture) notation += 'x';
+            // Pawn captures show file of origin
+            if (!pieceLetter && isCapture) {
+                const file = String.fromCharCode('a'.charCodeAt(0) + fc);
+                notation += file;
+            }
 
-        notation += toSq;
+            if (isCapture) notation += 'x';
 
-        // Promotion
-        if (promotePiece) {
-            notation += '=' + promotePiece.toUpperCase();
+            notation += toSq;
+
+            // Promotion
+            if (promotePiece) {
+                notation += '=' + promotePiece.toUpperCase();
+            }
         }
 
         // Check / mate
@@ -454,10 +561,10 @@ export class ChessEngine {
         const oppInCheck = this.isKingInCheck(opponentIsWhite);
         const oppLegalMoves = this.hasLegalMoves(opponentIsWhite);
 
-        if (oppInCheck && !oppLegalMoves) notation += '#';
-        else if (oppInCheck && oppLegalMoves) notation += '+';
+        if (!notation.startsWith('O-O') && oppInCheck && !oppLegalMoves) notation += '#';
+        else if (!notation.startsWith('O-O') && oppInCheck && oppLegalMoves) notation += '+';
 
-        // Push to this.log
+        // Add to log
         this.log.push(notation);
     }
 
@@ -471,26 +578,23 @@ export class ChessEngine {
     getPosition() {
         return JSON.stringify({
             board: this.board,
-            turn: this.turn
+            turn: this.turn,
+            castlingRights: this.castlingRights
         });
     }
 
-    // check if (r,c) is inside board
     inside(r, c) {
         return r >= 0 && r < this.rows && c >= 0 && c < this.cols;
     }
 
-    // check if piece is white
     isWhite(p) {
         return p ? p !== '.' && p === p.toUpperCase() : null;
     }
 
-    // check if piece is black
     isBlack(p) {
         return p ? p !== '.' && p === p.toLowerCase() : null;
     }
 
-    // check if piece is empty
     isEmpty(p) {
         return p ? p == '.' : null;
     }
@@ -532,37 +636,9 @@ export class ChessEngine {
     }
 
 
-    clone() {
-        const clone = new ChessEngine(
-            this.board.map(row => [...row]) // deep copy of board
-        );
-
-        clone.turn = this.turn;
-
-        clone.whiteKingChecked = this.whiteKingChecked;
-        clone.whiteCaptures = [...this.whiteCaptures];
-        clone.whitePoints = this.whitePoints;
-
-        clone.blackKingChecked = this.blackKingChecked;
-        clone.blackCaptures = [...this.blackCaptures];
-        clone.blackPoints = this.blackPoints;
-
-        clone.halfmoveClock = this.halfmoveClock;
-        clone.positionHistory = [...this.positionHistory];
-
-        clone.gameCondition = this.gameCondition;
-        clone.log = [...this.log];  // new array, not shared
-
-        clone.renderer = null;       // no UI
-        clone.whiteAI = null;        // prevent AI triggers
-        clone.blackAI = null;
-
-        return clone;
-    }
-
     minimalClone() {
         const clone = new ChessEngine(
-            this.board.map(row => [...row]) // deep copy of board
+            this.board.map(row => [...row])
         );
 
         clone.turn = this.turn;

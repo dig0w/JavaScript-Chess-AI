@@ -11,5 +11,4 @@ Transposition Table
 History heuristic
 
 
-Castle
 En passant pawn

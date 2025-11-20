@@ -294,6 +294,7 @@ export class ChessRender {
         this.desHighlightMoves();
 
         const moves = this.engine.getLegalMoves(r, c);
+        console.log(moves);
 
         moves.forEach(([r, c]) => {
             const sq = document.querySelector(`.square[data-r="${r}"][data-c="${c}"]`);
