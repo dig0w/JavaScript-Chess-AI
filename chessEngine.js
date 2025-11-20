@@ -47,6 +47,9 @@ export class ChessEngine {
             'k': 0
         }
 
+        this.halfmoveClock = 0;
+        this.positionHistory = [];
+
         this.gameCondition = 'PLAYING';
         this.log = [];
 
@@ -79,7 +82,17 @@ export class ChessEngine {
             } else {
                 this.blackCaptures.push(targetPiece);
             }
+
+            this.halfmoveClock = 0;
         }
+
+        if (movingPiece.toLowerCase() == 'p' || (!this.isEmpty(targetPiece) && this.isWhite(movingPiece) !== this.isWhite(targetPiece))) {
+            this.halfmoveClock = 0;
+        } else {
+            this.halfmoveClock++;
+        }
+
+        this.positionHistory.push(this.getPosition());
 
         this.whitePoints = 0;
         this.blackPoints = 0;
@@ -90,20 +103,20 @@ export class ChessEngine {
 
         this.logMove(fr, fc, tr, tc, originalPiece, targetPiece, promotePiece);
 
-        this.SwitchTurn();
-
         this.whiteKingChecked = this.isKingInCheck(true);
         this.blackKingChecked = this.isKingInCheck(false);
-
-        this.renderer?.UpdateSquare(fr, fc);
-        this.renderer?.UpdateSquare(tr, tc);
-        this.renderer?.UpdateGame();
 
         const result = this.evaluateEndConditions();
         if (result) {
             this.gameCondition = result;
             console.log('GAME OVER:', this.gameCondition);
         }
+
+        this.SwitchTurn();
+
+        this.renderer?.UpdateSquare(fr, fc);
+        this.renderer?.UpdateSquare(tr, tc);
+        this.renderer?.UpdateGame();
     }
 
     isLegalMove(fr, fc, tr, tc) {
@@ -348,6 +361,15 @@ export class ChessEngine {
             return 'DRAW_DEAD_POSITION';
         }
 
+        if (this.halfmoveClock >= 100) {
+            return 'DRAW_50-MOVE_RULE';
+        }
+
+        const historyKey = this.getPosition();
+        if (this.positionHistory.filter(k => k === historyKey).length >= 3) {
+            return 'DRAW_THREEFOLD_REPETITION';
+        }
+
         return null;
     }
 
@@ -397,8 +419,15 @@ export class ChessEngine {
     SwitchTurn() {
         this.turn = 1 - this.turn;
 
-        if (this.turn == 0 && this.whiteAI) this.whiteAI.Play();
-        if (this.turn == 1 && this.blackAI) this.blackAI.Play();
+        if (this.turn == 0 && this.whiteAI) this.whiteAI?.Play();
+        if (this.turn == 1 && this.blackAI) this.blackAI?.Play();
+    }
+
+    getPosition() {
+        return JSON.stringify({
+            board: this.board,
+            turn: this.turn
+        });
     }
 
     // check if (r,c) is inside board
@@ -457,9 +486,6 @@ export class ChessEngine {
         return file + rank;
     }
 
-    evaluate() {
-        return this.whitePoints - this.blackPoints;
-    }
 
     clone() {
         const clone = new ChessEngine(
@@ -476,12 +502,36 @@ export class ChessEngine {
         clone.blackCaptures = [...this.blackCaptures];
         clone.blackPoints = this.blackPoints;
 
+        clone.halfmoveClock = this.halfmoveClock;
+        clone.positionHistory = [...this.positionHistory];
+
         clone.gameCondition = this.gameCondition;
         clone.log = [...this.log];  // new array, not shared
 
         clone.renderer = null;       // no UI
         clone.whiteAI = null;        // prevent AI triggers
         clone.blackAI = null;
+
+        return clone;
+    }
+
+    minimalClone() {
+        const clone = new ChessEngine(
+            this.board.map(row => [...row]) // deep copy of board
+        );
+
+        clone.turn = this.turn;
+
+        clone.whiteKingChecked = this.whiteKingChecked;
+        clone.whitePoints = this.whitePoints;
+
+        clone.blackKingChecked = this.blackKingChecked;
+        clone.blackPoints = this.blackPoints;
+
+        clone.halfmoveClock = this.halfmoveClock;
+        clone.positionHistory = [...this.positionHistory];
+
+        clone.gameCondition = this.gameCondition;
 
         return clone;
     }

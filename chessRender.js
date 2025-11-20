@@ -101,42 +101,27 @@ export class ChessRender {
 
         await delay(200);
 
-        switch (this.engine.gameCondition) {
-            case 'WHITE_WINS_CHECKMATE':
-                this.endScreen.classList.remove('hidden');
+        if (this.engine.gameCondition.startsWith('WHITE_WINS')) {
+            this.endScreen.classList.remove('hidden');
 
-                this.endScreen.classList.add('won');
+            this.endScreen.classList.add('won');
 
-                this.endScreen.children[0].children[0].children[0].textContent = 'White Won!';
-                this.endScreen.children[0].children[0].children[1].textContent = 'by checkmate';
-                break;
-            case 'BLACK_WINS_CHECKMATE':
-                this.endScreen.classList.remove('hidden');
+            this.endScreen.children[0].children[0].children[0].textContent = 'White Won!';
+            this.endScreen.children[0].children[0].children[1].textContent = 'by ' + this.engine.gameCondition.split('_').slice(2).join(' ').toLowerCase();
+        } else if (this.engine.gameCondition.startsWith('BLACK_WINS')) {
+            this.endScreen.classList.remove('hidden');
 
-                this.endScreen.classList.add('won');
+            this.endScreen.classList.add('won');
 
-                this.endScreen.children[0].children[0].children[0].textContent = 'Black Won!';
-                this.endScreen.children[0].children[0].children[1].textContent = 'by checkmate';
-                break;
-            case 'DRAW_STALEMATE':
-                this.endScreen.classList.remove('hidden');
+            this.endScreen.children[0].children[0].children[0].textContent = 'Black Won!';
+            this.endScreen.children[0].children[0].children[1].textContent = 'by ' + this.engine.gameCondition.split('_').slice(2).join(' ').toLowerCase();
+        } else if (this.engine.gameCondition.startsWith('DRAW')) {
+            this.endScreen.classList.remove('hidden');
 
-                this.endScreen.classList.add('draw');
+            this.endScreen.classList.add('draw');
 
-                this.endScreen.children[0].children[0].children[0].textContent = 'Draw!';
-                this.endScreen.children[0].children[0].children[1].textContent = 'by stalemate';
-                break;
-            case 'DRAW_DEAD_POSITION':
-                this.endScreen.classList.remove('hidden');
-
-                this.endScreen.classList.add('draw');
-
-                this.endScreen.children[0].children[0].children[0].textContent = 'Draw!';
-                this.endScreen.children[0].children[0].children[1].textContent = 'by death position';
-                break;
-            case 'PLAYING':
-            default:
-                break;
+            this.endScreen.children[0].children[0].children[0].textContent = 'Draw!';
+            this.endScreen.children[0].children[0].children[1].textContent = 'by ' + this.engine.gameCondition.split('_').slice(1).join(' ').toLowerCase();
         }
     }
 
@@ -170,7 +155,7 @@ export class ChessRender {
             this.whiteCaptures.children[0].appendChild(li);
         }
 
-        const whiteDiff = this.engine.evaluate();
+        const whiteDiff = this.engine.whitePoints - this.engine.blackPoints;
         this.whiteCaptures.children[1].textContent = whiteDiff === 0 ? '' : (whiteDiff > 0 ? `+${whiteDiff}` : `${whiteDiff}`);
 
 
@@ -202,6 +187,15 @@ export class ChessRender {
     }
 
     onSquareClick(e) {
+        // Case 0: not his turn -> deselect
+        if ((this.engine.turn == 0 && this.engine.whiteAI != null) || (this.engine.turn == 1 && this.engine.blackAI != null)) {
+            console.log('AIs turn');
+            this.lastSelected = null;
+            this.desHighlightMoves();
+            e.target.blur();
+            return;
+        }
+
         const r = +e.target.dataset.r;
         const c = +e.target.dataset.c;
 

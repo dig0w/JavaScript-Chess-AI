@@ -1,6 +1,6 @@
 import { delay } from '../utils.js';
 
-export class AIV1 {
+export class AIV2 {
     constructor(engine = null, playsWhite = false, depth = 6) {
         this.engine = engine;
         this.playsWhite = playsWhite;
@@ -9,6 +9,11 @@ export class AIV1 {
         else engine.blackAI = this;
 
         this.depth = depth;
+
+        this.piecePoints = {
+            'P': 100, 'N': 320, 'B': 330, 'R': 500, 'Q': 900, 'K': 20000,
+            'p': -100, 'n': -320, 'b': -330, 'r': -500, 'q': -900, 'k': -20000
+        };
     }
 
     async Play() {
@@ -84,6 +89,25 @@ export class AIV1 {
     }
 
     evaluate(engineState) {
-        return engineState.whitePoints - engineState.blackPoints;
+        let score = 0;
+
+        for (let r = 0; r < engineState.rows; r++) {
+            for (let c = 0; c < engineState.cols; c++) {
+                const p = engineState.board[r][c];
+                if (!engineState.isEmpty(p)) score += this.piecePoints[p] || 0;
+            }
+        }
+
+        // mobility
+        const whiteMoves = engineState.getPlayerLegalMoves(true).length;
+        const blackMoves = engineState.getPlayerLegalMoves(false).length;
+        score += (whiteMoves - blackMoves) * 5;
+
+        // win
+        if (engineState.gameCondition.startsWith('WHITE_WIN')) return 999999;
+        if (engineState.gameCondition.startsWith('BLACK_WIN')) return -999999;
+        if (engineState.gameCondition.startsWith('DRAW')) return -500000;
+
+        return engineState.turn === 0 ? score : -score; 
     }
 }
