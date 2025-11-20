@@ -85,6 +85,7 @@
     import { ChessRender } from './chessRender.js';
     import { AIV1 } from './AI/ai_v1.js';
     import { AIV2 } from './AI/ai_v2.js';
+    import { AIV3 } from './AI/ai_v3.js';
 
     const chess = new ChessEngine();
     const render = new ChessRender(chess);
@@ -97,12 +98,12 @@
         document.getElementById('switchside-btn').textContent = 'Play White';
 
         white = false;
-        AI = new AIV2(chess, true);
+        AI = new AIV3(chess, true);
     } else {
         document.getElementById('switchside-btn').textContent = 'Play Black';
 
         white = true;
-        AI = new AIV2(chess, false);
+        AI = new AIV3(chess, false);
     }
 
     window.onload = async (e) => {
