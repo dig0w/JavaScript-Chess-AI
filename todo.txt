@@ -5,6 +5,3 @@ Killer move heuristic
 v6
 Transposition Table
 History heuristic
-
-
-Undo move

@@ -102,12 +102,10 @@ export class ChessRender {
         
         if (this.engine.isEmpty(this.engine.board[r][c])) {
             sq.style.setProperty('--bg-img', ``);
-            // sq.style.backgroundImage = null;
             return;
         }
 
         sq.style.setProperty('--bg-img', `url(${this.assetPrefix + (this.engine.isWhite(piece) ? 'w' : 'b') + piece.toLowerCase()}.png)`);
-        // sq.style.backgroundImage = 'url(' + this.assetPrefix + (this.engine.isWhite(piece) ? 'w' : 'b') + piece.toLowerCase() + '.png)';
     }
 
     async UpdateGame() {
@@ -118,10 +116,12 @@ export class ChessRender {
         // Highlight last move
         document.querySelectorAll('.selected').forEach(sq => sq.classList.remove('selected'));
         document.querySelectorAll('.light-selected').forEach(sq => sq.classList.remove('light-selected'));
-        if (this.engine.lastMove) {
-            const fsq = this.boardEl.querySelector(`.square[data-r="${this.engine.lastMove.fr}"][data-c="${this.engine.lastMove.fc}"]`);
+        if (this.engine.logs.length > 0) {
+            const lastMove = this.engine.logs[this.engine.logs.length - 1];
+
+            const fsq = this.boardEl.querySelector(`.square[data-r="${lastMove.fr}"][data-c="${lastMove.fc}"]`);
                 if (!fsq) return;
-            const tsq = this.boardEl.querySelector(`.square[data-r="${this.engine.lastMove.tr}"][data-c="${this.engine.lastMove.tc}"]`);
+            const tsq = this.boardEl.querySelector(`.square[data-r="${lastMove.tr}"][data-c="${lastMove.tc}"]`);
                 if (!tsq) return;
             
             fsq.classList.add('light-selected');

@@ -126,7 +126,7 @@ export class ChessEngine {
 
         // En-passant capture
         let isEnPassantCapture = false;
-        if (movingPiece.toLowerCase() === 'p' && this.enPassantSquare && tr === this.enPassantSquare.r && this.enPassantSquare.c && this.isEmpty(targetPiece)) {
+        if (movingPiece.toLowerCase() === 'p' && this.enPassantSquare && tr === this.enPassantSquare.r && tc === this.enPassantSquare.c && this.isEmpty(targetPiece)) {
             const capRow = this.isWhite(movingPiece) ? tr + 1 : tr - 1;
             targetPiece = this.board[capRow][tc];
             this.board[capRow][tc] = '.';
@@ -169,6 +169,7 @@ export class ChessEngine {
         this.blackKingChecked = this.isKingInCheck(false);
 
         // Castle rights
+        const prevCastlingRights = {...this.castlingRights};
         if (movingPiece.toLowerCase() === 'k') {
             if (this.isWhite(movingPiece)) {
                 this.castlingRights.whiteKingSide = false;
@@ -186,6 +187,7 @@ export class ChessEngine {
         }
 
         // En-passant rights
+        const prevEnPassantSquare = {...this.enPassantSquare};
         this.enPassantSquare = null;
         if (movingPiece.toLowerCase() === 'p' && Math.abs(fr - tr) === 2) {
             const epRow = (fr + tr) / 2;
@@ -203,8 +205,8 @@ export class ChessEngine {
             castle,
             isEnPassantCapture,
             enPassantCaptureRow: isEnPassantCapture ? (this.isWhite(movingPiece) ? tr + 1 : tr - 1) : null,
-            enPassantSquare: {...this.enPassantSquare},
-            castlingRights: {...this.castlingRights},
+            enPassantSquare: {...prevEnPassantSquare},
+            castlingRights: {...prevCastlingRights},
             
             halfmoveClock: this.halfmoveClock,
 
@@ -241,7 +243,7 @@ export class ChessEngine {
     undoMove() {
         if (this.logs.length === 0) return;
 
-        const last = this.logs.pop();
+        const lastMove = this.logs.pop();
 
         const {
             fr, fc, tr, tc,
@@ -265,7 +267,9 @@ export class ChessEngine {
 
             gameCondition,
             turn
-        } = last;
+        } = lastMove;
+
+        const white = this.isWhite(movingPiece);
 
         // Restore piece positions
         this.board[fr][fc] = originalPiece;
@@ -274,28 +278,40 @@ export class ChessEngine {
         // Undo en passant capture
         if (isEnPassantCapture && enPassantCaptureRow != null) {
             const capRow = enPassantCaptureRow;
-            this.board[capRow][tc] = this.isWhite(movingPiece) ? 'p' : 'P';
+            this.board[capRow][tc] = white ? 'p' : 'P';
+            this.board[white ? capRow - 1 : capRow + 1][tc] = '.';
+
+            this.renderer?.UpdateSquare(capRow, tc);
         }
 
         // Undo castling
-        if (castle === 1) { // king-side
+        if (castle === 1) { // King-side
             this.board[tr][7] = this.board[tr][5];
             this.board[tr][5] = '.';
-        } else if (castle === 2) { // queen-side
+
+            this.renderer?.UpdateSquare(tr, 7);
+            this.renderer?.UpdateSquare(tr, 5);
+        } else if (castle === 2) { // Queen-side
             this.board[tr][0] = this.board[tr][3];
             this.board[tr][3] = '.';
+
+            this.renderer?.UpdateSquare(tr, 0);
+            this.renderer?.UpdateSquare(tr, 3);
         }
 
         // Undo pawn promotion
         if (promotePiece) {
-            this.board[fr][fc] = this.isWhite(movingPiece) ? 'P' : 'p';
+            this.board[fr][fc] = white ? 'P' : 'p';
         }
 
         // Restore castling rights
-        this.castlingRights = structuredClone(castlingRights);
+        this.castlingRights.whiteKingSide = castlingRights.whiteKingSide;
+        this.castlingRights.whiteQueenSide = castlingRights.whiteQueenSide;
+        this.castlingRights.blackKingSide = castlingRights.blackKingSide;
+        this.castlingRights.blackQueenSide = castlingRights.blackQueenSide;
 
         // Restore en passant square
-        this.enPassantSquare = enPassantSquare ? { ...enPassantSquare } : null;
+        this.enPassantSquare = enPassantSquare ? { ...enPassantSquare } : null;;
 
         // Restore halfmove clock
         this.halfmoveClock = halfmoveClock;
@@ -311,6 +327,8 @@ export class ChessEngine {
         // Restore game condition and turn
         this.gameCondition = gameCondition;
         this.turn = turn;
+
+        this.totalPlies--;
 
         // UI updates
         this.renderer?.UpdateSquare(fr, fc);
