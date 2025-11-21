@@ -11,4 +11,5 @@ Transposition Table
 History heuristic
 
 
+Square coords (with ::after and ::before)
 En passant pawn
