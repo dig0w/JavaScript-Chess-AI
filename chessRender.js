@@ -47,7 +47,7 @@ export class ChessRender {
             for (let c = 0; c < this.engine.cols; c++) {
                 const sq = document.createElement('button');
                 sq.classList.add('square');
-                if (r == 3 && c == 3) sq.classList.add('cordR');
+                if (r == 4 && c == 4) sq.classList.add('cordR');
                 sq.dataset.r = r;
                 sq.dataset.c = c;
 
