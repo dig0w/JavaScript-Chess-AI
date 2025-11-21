@@ -180,6 +180,20 @@ ul {
 .square.light-selected:hover, .square.light-selected:focus {
     background-color: rgba(var(--light-selected-square), .5);
 }
+.square.cordR::after {
+    content: 'a';
+
+    position: absolute;
+    bottom: 2%;
+    right: 2%;
+}
+.square.cordC::before {
+    content: '1';
+    
+    position: absolute;
+    bottom: 2%;
+    right: 2%;
+}
 
 .game-container .main .opponent {
     margin: .5rem 0;
