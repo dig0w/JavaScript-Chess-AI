@@ -1,7 +1,3 @@
-v4
-Move ordering
-Piece-square tables
-
 v5
 Quiescence search
 Killer move heuristic
@@ -11,5 +7,4 @@ Transposition Table
 History heuristic
 
 
-Square coords (with ::after and ::before)
-En passant pawn
+Undo move

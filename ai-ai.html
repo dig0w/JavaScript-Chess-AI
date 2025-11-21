@@ -85,6 +85,7 @@
     import { AIV1 } from './AI/ai_v1.js';
     import { AIV2 } from './AI/ai_v2.js';
     import { AIV3 } from './AI/ai_v3.js';
+    import { AIV4 } from './AI/ai_v4.js';
 
     const chess = new ChessEngine();
     const render = new ChessRender(chess);
@@ -96,7 +97,9 @@
     // const AI2W = new AIV2(chess, true, depth);
     // const AI2B = new AIV2(chess, false, depth);
     const AI3W = new AIV3(chess, true, depth);
-    const AI3B = new AIV3(chess, false, depth);
+    // const AI3B = new AIV3(chess, false, depth);
+    // const AI4W = new AIV4(chess, true, depth);
+    const AI4B = new AIV4(chess, false, depth);
 
     window.onload = async (e) => {
         render.BeginPlay();

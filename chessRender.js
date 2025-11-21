@@ -47,9 +47,11 @@ export class ChessRender {
             for (let c = 0; c < this.engine.cols; c++) {
                 const sq = document.createElement('button');
                 sq.classList.add('square');
-                if (r == 4 && c == 4) sq.classList.add('cordR');
                 sq.dataset.r = r;
                 sq.dataset.c = c;
+
+                sq.dataset.rank = this.engine.rows - r;
+                sq.dataset.file = String.fromCharCode(97 + c);
 
                 if ((r + c) % 2 === 0) {
                     sq.classList.add('dark');
@@ -99,11 +101,13 @@ export class ChessRender {
         const piece = this.engine.board[r][c];
         
         if (this.engine.isEmpty(this.engine.board[r][c])) {
-            sq.style.backgroundImage = null;
+            sq.style.setProperty('--bg-img', ``);
+            // sq.style.backgroundImage = null;
             return;
         }
 
-        sq.style.backgroundImage = 'url(' + this.assetPrefix + (this.engine.isWhite(piece) ? 'w' : 'b') + piece.toLowerCase() + '.png)';
+        sq.style.setProperty('--bg-img', `url(${this.assetPrefix + (this.engine.isWhite(piece) ? 'w' : 'b') + piece.toLowerCase()}.png)`);
+        // sq.style.backgroundImage = 'url(' + this.assetPrefix + (this.engine.isWhite(piece) ? 'w' : 'b') + piece.toLowerCase() + '.png)';
     }
 
     async UpdateGame() {

@@ -1,7 +1,7 @@
 import { delay } from '../utils.js';
 
 export class AIV1 {
-    constructor(engine = null, playsWhite = false, depth = 6) {
+    constructor(engine = null, playsWhite = false, depth = 2) {
         this.engine = engine;
         this.playsWhite = playsWhite;
 
@@ -15,6 +15,8 @@ export class AIV1 {
     }
 
     async Play() {
+        await delay(1000);
+
         const isWhiteTurn = this.engine.turn === 0;
         if (isWhiteTurn !== this.playsWhite) return;
         
@@ -24,8 +26,6 @@ export class AIV1 {
 
         const best = this.bestMove(this.depth);
             if (!best) return; // no legal moves
-
-        await delay(1000);
 
         this.totalNodes += this.nodes;
 
