@@ -1,6 +1,6 @@
 import { delay } from '../utils.js';
 
-export class AIV4 {
+export class AIV5 {
     constructor(engine = null, playsWhite = false, depth = 2) {
         this.engine = engine;
         this.playsWhite = playsWhite;
@@ -116,11 +116,14 @@ export class AIV4 {
         let bestScore = -Infinity;
         let bestMove = null;
 
+        const copy = engine.minimalClone();
+
         for (const move of moves) {
-            const copy = engine.minimalClone();
             copy.MovePiece(move.fr, move.fc, move.tr, move.tc, move.promote);
 
             const score = -this.minimax(copy, depth - 1, -Infinity, Infinity);
+
+            copy.undoMove();
 
             if (score > bestScore) {
                 bestScore = score;
@@ -149,13 +152,18 @@ export class AIV4 {
         let best = -Infinity;
 
         for (const move of moves) {
-            const copy = engineState.minimalClone();
-            copy.MovePiece(move.fr, move.fc, move.tr, move.tc, move.promote);
+            engineState.MovePiece(move.fr, move.fc, move.tr, move.tc, move.promote);
+
+            // const copy = engineState.minimalClone();
+            // copy.MovePiece(move.fr, move.fc, move.tr, move.tc, move.promote);
 
             let tactical = 0;
             if (move.promote) tactical += 900;
 
-            const score = -this.minimax(copy, depth - 1, -beta, -alpha) + tactical;
+            // const score = -this.minimax(copy, depth - 1, -beta, -alpha) + tactical;
+            const score = -this.minimax(engineState, depth - 1, -beta, -alpha) + tactical;
+
+            engineState.undoMove();
 
             if (score > best) best = score;
             if (score > alpha) alpha = score;

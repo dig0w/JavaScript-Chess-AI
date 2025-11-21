@@ -76,6 +76,7 @@ export class ChessEngine {
 
         this.gameCondition = 'PLAYING';
         this.log = [];
+        this.logs = [];
         this.lastMove = null;
         this.totalPlies = 0;
 
@@ -191,9 +192,30 @@ export class ChessEngine {
             this.enPassantSquare = { r: epRow, c: fc };
         }
 
-        // Save move
-        this.logMove(fr, fc, tr, tc, originalPiece, targetPiece, promotePiece, castle, isEnPassantCapture);
-        this.lastMove = { fr, fc, tr, tc };
+        // Store move
+        this.logs.push({
+            fr, fc, tr, tc,
+            originalPiece,
+            movingPiece,
+            targetPiece,
+            promotePiece,
+
+            castle,
+            isEnPassantCapture,
+            enPassantCaptureRow: isEnPassantCapture ? (this.isWhite(movingPiece) ? tr + 1 : tr - 1) : null,
+            enPassantSquare: {...this.enPassantSquare},
+            castlingRights: {...this.castlingRights},
+            
+            halfmoveClock: this.halfmoveClock,
+
+            whiteKingChecked: this.whiteKingChecked,
+            blackKingChecked: this.blackKingChecked,
+            whiteCapturesLength: this.whiteCaptures.length,
+            blackCapturesLength: this.blackCaptures.length,
+
+            gameCondition: this.gameCondition,
+            turn: this.turn
+        });
         this.totalPlies++;
 
         // Game condition
@@ -206,12 +228,95 @@ export class ChessEngine {
         // UI
         this.renderer?.UpdateSquare(fr, fc);
         this.renderer?.UpdateSquare(tr, tc);
+        this.renderer?.AddToLog();
         this.renderer?.UpdateGame();
 
         if (promotePiece) return this.renderer?.PlaySound(3);
         else if (this.whiteKingChecked || this.blackKingChecked) return this.renderer?.PlaySound(2);
         else if (isCapture) return this.renderer?.PlaySound(1);
+        else if (castle !== 0) return this.renderer?.PlaySound(4);
         else return this.renderer?.PlaySound(0);
+    }
+
+    undoMove() {
+        if (this.logs.length === 0) return;
+
+        const last = this.logs.pop();
+
+        const {
+            fr, fc, tr, tc,
+            originalPiece,
+            movingPiece,
+            targetPiece,
+            promotePiece,
+
+            castle,
+            isEnPassantCapture,
+            enPassantCaptureRow,
+            enPassantSquare,
+            castlingRights,
+
+            halfmoveClock,
+
+            whiteKingChecked,
+            blackKingChecked,
+            whiteCapturesLength,
+            blackCapturesLength,
+
+            gameCondition,
+            turn
+        } = last;
+
+        // Restore piece positions
+        this.board[fr][fc] = originalPiece;
+        this.board[tr][tc] = targetPiece;
+
+        // Undo en passant capture
+        if (isEnPassantCapture && enPassantCaptureRow != null) {
+            const capRow = enPassantCaptureRow;
+            this.board[capRow][tc] = this.isWhite(movingPiece) ? 'p' : 'P';
+        }
+
+        // Undo castling
+        if (castle === 1) { // king-side
+            this.board[tr][7] = this.board[tr][5];
+            this.board[tr][5] = '.';
+        } else if (castle === 2) { // queen-side
+            this.board[tr][0] = this.board[tr][3];
+            this.board[tr][3] = '.';
+        }
+
+        // Undo pawn promotion
+        if (promotePiece) {
+            this.board[fr][fc] = this.isWhite(movingPiece) ? 'P' : 'p';
+        }
+
+        // Restore castling rights
+        this.castlingRights = structuredClone(castlingRights);
+
+        // Restore en passant square
+        this.enPassantSquare = enPassantSquare ? { ...enPassantSquare } : null;
+
+        // Restore halfmove clock
+        this.halfmoveClock = halfmoveClock;
+
+        // Restore king check flags
+        this.whiteKingChecked = whiteKingChecked;
+        this.blackKingChecked = blackKingChecked;
+
+        // Restore captures arrays lengths
+        this.whiteCaptures.length = whiteCapturesLength;
+        this.blackCaptures.length = blackCapturesLength;
+
+        // Restore game condition and turn
+        this.gameCondition = gameCondition;
+        this.turn = turn;
+
+        // UI updates
+        this.renderer?.UpdateSquare(fr, fc);
+        this.renderer?.UpdateSquare(tr, tc);
+        this.renderer?.RemoveFromLog();
+        this.renderer?.UpdateGame();
     }
 
     isLegalMove(fr, fc, tr, tc) {
@@ -550,7 +655,19 @@ export class ChessEngine {
         return null;
     }
 
-    logMove(fr, fc, tr, tc, movingPiece, targetPiece, promotePiece = null, castle = 0, isEnPassantCapture = false) {
+    getMoveNotation(fullMove) {
+        if (!fullMove) return;
+
+        const {
+            fr, fc, tr, tc,
+            originalPiece,
+            movingPiece,
+            targetPiece,
+            promotePiece,
+            castle,
+            isEnPassantCapture
+        } = fullMove;
+
         let notation = '';
 
         // Handle castling first
@@ -602,8 +719,7 @@ export class ChessEngine {
         if (!notation.startsWith('O-O') && oppInCheck && !oppLegalMoves) notation += '#';
         else if (!notation.startsWith('O-O') && oppInCheck && oppLegalMoves) notation += '+';
 
-        // Add to log
-        this.log.push(notation);
+        return notation;
     }
 
     SwitchTurn() {

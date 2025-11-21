@@ -59,6 +59,7 @@
 
             <div class="actions">
                 <span>Actions</span>
+                <button id="undo-btn" class="btn">Undo</button>
                 <button id="restart-btn" class="btn" onclick="window.location.reload()">Restart</button>
                 <button id="switchside-btn" class="btn">Play Black</button>
             </div>
@@ -90,7 +91,7 @@
 
     let white = true;
     let AI = null;
-    const depth = 4;
+    const depth = 2;
     
     const params = new URLSearchParams(window.location.search);
     if (params.get('play') === 'black') {

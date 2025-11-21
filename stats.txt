@@ -4,6 +4,7 @@ v1 - Basic evaluation, calculating difference in points on board
 v2 - Better evaluation, reward mobility, points, end condition
 v3 - Better evaluation, v2 + reward promotions, discourage long games
 v4 - v3 + piece-square tables and move ordering
+v5 - v4 + undo instead of clone
 
 depth = 2
 Nodes (move)	White		Black
@@ -31,4 +32,13 @@ v4                Black Won   14604     38
 depth = 4
 W vs Stockfish    Result      Nodes     Moves
 v3                Black Won   3768758     50
-v4                Black Won   25003       50
+v4                Black Won   1739861     60
+
+
+depth = 4
+First Move time     White   Black
+v1                  454     419
+v2                  10579   26152
+v3                  10274   26015
+v4                  10436   7944   
+v5                  472     2308

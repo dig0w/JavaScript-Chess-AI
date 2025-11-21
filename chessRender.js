@@ -114,7 +114,6 @@ export class ChessRender {
         this.UpdateCheck();
         this.UpdateCaptures();
         this.UpdateTurn();
-        this.UpdateLog();
 
         // Highlight last move
         document.querySelectorAll('.selected').forEach(sq => sq.classList.remove('selected'));
@@ -205,17 +204,19 @@ export class ChessRender {
         this.turnDisplay.textContent = this.engine.turn == 0 ? 'White' : 'Black';
     }
 
-    UpdateLog() {
-        this.logDisplay.innerHTML = '';
+    AddToLog() {
+        const notaion = this.engine.getMoveNotation(this.engine.logs[this.engine.logs.length - 1]);
+            if (notaion == '' || !notaion) return;
 
-        for (let i = 0; i < this.engine.log.length; i++) {
-            const li = document.createElement('li');
-            li.textContent = this.engine.log[i];
+        const li = document.createElement('li');
+        li.textContent = notaion;
 
-            this.logDisplay.appendChild(li);
-        }
+        this.logDisplay.appendChild(li);
 
         this.logDisplay.scrollTop = this.logDisplay.scrollHeight;
+    }
+    RemoveFromLog() {
+        this.logDisplay.children[this.logDisplay.children.length - 1].remove();
     }
 
     onSquareClick(e) {
@@ -299,7 +300,6 @@ export class ChessRender {
         this.desHighlightMoves();
 
         const moves = this.engine.getLegalMoves(r, c);
-        console.log(moves);
 
         moves.forEach(([r, c]) => {
             const sq = document.querySelector(`.square[data-r="${r}"][data-c="${c}"]`);

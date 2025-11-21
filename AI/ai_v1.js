@@ -17,6 +17,8 @@ export class AIV1 {
     async Play() {
         await delay(1000);
 
+        const startTime = new Date;
+
         const isWhiteTurn = this.engine.turn === 0;
         if (isWhiteTurn !== this.playsWhite) return;
         
@@ -31,6 +33,7 @@ export class AIV1 {
 
         console.log('Nodes searched:', this.nodes, 'Total nodes: ', this.totalNodes);
         console.log('Best move:', best);
+        console.log('Move time:', new Date - startTime);
 
         // Execute move on real engine
         this.engine.MovePiece(best.fr, best.fc, best.tr, best.tc, best.promote);

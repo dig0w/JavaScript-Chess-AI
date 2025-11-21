@@ -59,6 +59,7 @@
 
             <div class="actions">
                 <span>Actions</span>
+                <button id="undo-btn" class="btn">Undo</button>
                 <button id="restart-btn" class="btn" onclick="window.location.reload()">Restart</button>
             </div>
         </div>
@@ -88,6 +89,10 @@
 
     window.onload = async (e) => {
         render.BeginPlay();
+
+        document.getElementById('undo-btn').addEventListener('click', () => {
+            chess.undoMove();
+        });
     };
 </script>
 
