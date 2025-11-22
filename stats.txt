@@ -25,15 +25,14 @@ v4.1 vs v4.1  Black Won   26699 - 27278   62
 v3 vs v4      White Won   21829 - 16680   39
 v4 vs v4      White Won   28495 - 24580   45
 
-depth = 2
-W vs Stockfish    Result      Nodes     Moves
-v3                Black Won   25003     48
-v4                Black Won   14604     38
 
-depth = 4
 W vs Stockfish    Result      Nodes     Moves
-v3                Black Won   3768758     50
-v4                Black Won   1739861     60
+v3   (d=2)        Black Won   25003     48
+v3   (d=4)        Black Won   3768758     50
+v4   (d=2)        Black Won   14604     38
+v4   (d=4)        Black Won   1739861     60
+v5.1 (d=4)        Black Won   3768758     50
+v5.1 (d=6)        Black Won   3768758     50
 
 
 depth = 4
@@ -42,3 +41,6 @@ v1                  454     419
 v2                  10579   26152
 v3                  10274   26015
 v4                  10436   7944
+
+v4                  15639 (24591)
+v5.1                14989 (24591)

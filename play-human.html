@@ -83,9 +83,12 @@
     import { delay } from './utils.js';
     import { ChessEngine } from './chessEngine.js';
     import { ChessRender } from './chessRender.js';
+    import { Test } from './AI/test.js';
 
     const chess = new ChessEngine();
     const render = new ChessRender(chess);
+
+    const testing = new Test(chess);
 
     window.onload = async (e) => {
         render.BeginPlay();
@@ -93,6 +96,10 @@
         document.getElementById('undo-btn').addEventListener('click', () => {
             chess.undoMove();
         });
+
+        await delay(1000);
+
+        testing.test();
     };
 </script>
 
