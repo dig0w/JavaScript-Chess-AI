@@ -115,6 +115,10 @@
             window.location.href = url.toString();
         });
 
+        document.getElementById('undo-btn').addEventListener('click', () => {
+            chess.undoMove();
+        });
+
         if (!white) {
             await delay(1000);
 
