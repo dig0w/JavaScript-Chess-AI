@@ -5,6 +5,8 @@ v2 - Better evaluation, reward mobility, points, end condition
 v3 - Better evaluation, v2 + reward promotions, discourage long games
 v4 - v3 + piece-square tables and move ordering
 v5.1 - v4 + undo instead of clone
+v5.2 - v5.1 + quiescence search
+v5 - v5.1 + quiescence search and killer move heuristic
 
 depth = 2
 Nodes (move)	White		Black
@@ -12,6 +14,7 @@ v1		        156 (a3)	156 (Na6)
 v2		        156 (e3)	288 (e6)
 v3		        156 (e3)	288 (e6)
 v4		        420 (Nc3)	460 (Nc6)
+v5		        824 (Nc3)	914 (Nc6)
 
 depth = 2
 W vs B        Result      Nodes           Moves
@@ -24,24 +27,14 @@ v3 vs v4.1    Black Won   26699 - 27278   62
 v4.1 vs v4.1  Black Won   26699 - 27278   62
 v3 vs v4      White Won   21829 - 16680   39
 v4 vs v4      White Won   28495 - 24580   45
-v4 vs v5.1    White Won   16189 - 78772   30
+v4 vs v5      Black Won   16189 - 78772   30
+v5 vs v5      White Won   124421 - 79011   31
 
 
 W vs Stockfish    Result      Nodes     Moves
 v3   (d=2)        Black Won   25003     48
-v3   (d=4)        Black Won   3768758     50
+v3   (d=4)        Black Won   3768758   50
 v4   (d=2)        Black Won   14604     38
-v4   (d=4)        Black Won   1739861     60
-v5.1 (d=4)        Black Won   3768758     50
-v5.1 (d=6)        Black Won   3768758     50
-
-
-depth = 4
-First Move time     White   Black
-v1                  454     419
-v2                  10579   26152
-v3                  10274   26015
-v4                  10436   7944
-
-v4                  15639 (24591)
-v5.1                14989 (24591)
+v4   (d=4)        Black Won   1739861   60
+v5   (d=2)        Black Won   107411    46
+v5   (d=4)        ...

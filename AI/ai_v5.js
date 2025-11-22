@@ -78,6 +78,8 @@ export class AIV5 {
             ]
         };
 
+        this.killerMoves = {};
+
         this.nodes = 0;
         this.totalNodes = 0;
 
@@ -149,11 +151,30 @@ export class AIV5 {
         }
 
         let moves = engineState.getPlayerLegalMoves(engineState.turn === 0);
+            if (moves.length === 0) return this.quiescence(engineState, alpha, beta);
 
         // Order moves
         moves.sort((a, b) => this.scoreMove(engineState, b) - this.scoreMove(engineState, a));
 
-        if (moves.length === 0) return this.quiescence(engineState, alpha, beta);
+        // Move ordering: first apply killer moves at this depth
+        const depthKey = depth;
+        if (this.killerMoves[depthKey]) {
+            moves.sort((a, b) => {
+                const aIsKiller = this.killerMoves[depthKey].some(k => 
+                    k.fr === a.fr && k.fc === a.fc && k.tr === a.tr && k.tc === a.tc
+                );
+                const bIsKiller = this.killerMoves[depthKey].some(k => 
+                    k.fr === b.fr && k.fc === b.fc && k.tr === b.tr && k.tc === b.tc
+                );
+
+                if (aIsKiller && !bIsKiller) return -1;
+                if (!aIsKiller && bIsKiller) return 1;
+
+                // fallback to MVV-LVA or existing score
+                return this.scoreMove(engineState, b) - this.scoreMove(engineState, a);
+            });
+        }
+
 
         let best = -Infinity;
 
@@ -175,7 +196,17 @@ export class AIV5 {
             if (score > best) best = score;
             if (score > alpha) alpha = score;
 
-            if (alpha >= beta) break; // alpha-beta cutoff
+            if (alpha >= beta) {
+                // Store this move as a killer move
+                if (!this.killerMoves[depthKey]) this.killerMoves[depthKey] = [];
+                const km = this.killerMoves[depthKey];
+                // Avoid duplicates
+                if (!km.some(k => k.fr === move.fr && k.fc === move.fc && k.tr === move.tr && k.tc === move.tc)) {
+                    km.unshift({ fr: move.fr, fc: move.fc, tr: move.tr, tc: move.tc });
+                    if (km.length > 2) km.pop(); // keep only 2 killer moves
+                }
+                break; // beta cutoff
+            }
         }
 
         return best;

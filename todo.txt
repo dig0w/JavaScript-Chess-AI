@@ -1,10 +1,32 @@
-v5
-Quiescence search
-Killer move heuristic
-
 v6
 Transposition Table
 History heuristic
+
+
+v5 explodes
+[
+    ['.', '.', '.', '.', 'k', '.', 'n', 'r'],
+    ['.', 'p', '.', '.', '.', 'p', 'p', 'p'],
+    ['p', '.', '.', 'b', 'b', '.', '.', '.'],
+    ['.', '.', '.', 'p', '.', '.', 'q', '.'],
+    ['.', 'n', 'r', 'N', '.', '.', '.', '.'],
+    ['.', '.', 'N', '.', 'P', '.', '.', '.'],
+    ['P', 'P', 'P', 'P', '.', 'P', 'P', 'P'],
+    ['R', '.', 'B', 'K', '.', '.', '.', 'R']
+]
+chessEngine.js:764 Uncaught (in promise) RangeError: Maximum call stack size exceeded
+    at ChessEngine.isWhite (chessEngine.js:764:12)
+    at ChessEngine.isLegalMove (chessEngine.js:373:54)
+    at ChessEngine.isSquareAttacked (chessEngine.js:568:26)
+    at ChessEngine.isKingInCheck (chessEngine.js:584:21)
+    at ChessEngine.moveKeepsKingSafe (chessEngine.js:599:28)
+    at ChessEngine.isLegalMove (chessEngine.js:388:82)
+    at ChessEngine.getLegalMoves (chessEngine.js:486:27)
+    at ChessEngine.getPlayerLegalMoves (chessEngine.js:510:47)
+    at AIV5.evaluate (ai_v5.js:270:40)
+    at AIV5.quiescence (ai_v5.js:293:31)
+
+Nodes: 2001991
 
 
 getPositionKey() takes arround 0.002 ms from MovePiece
