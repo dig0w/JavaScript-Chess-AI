@@ -80,6 +80,9 @@ export class AIV5 {
 
         this.nodes = 0;
         this.totalNodes = 0;
+
+        this.count = 0;
+        this.moveCount = 0;
     }
 
     async Play() {
@@ -101,6 +104,8 @@ export class AIV5 {
 
         console.log('Nodes searched:', this.nodes, 'Total nodes: ', this.totalNodes);
         console.log('Best move:', best);
+        console.log('Count:', this.count);
+        console.log('Move Count:', this.moveCount);
         console.log('Move time:', new Date - startTime);
 
         this.engine.MovePiece(best.fr, best.fc, best.tr, best.tc, best.promote);
@@ -110,16 +115,17 @@ export class AIV5 {
         const engine = this.engine;
         const moves = engine.getPlayerLegalMoves(engine.turn === 0);
 
+        const copy = engine.minimalClone();
+
         // Move ordering: sort moves by heuristic
-        moves.sort((a, b) => this.scoreMove(engine, b) - this.scoreMove(engine, a));
+        moves.sort((a, b) => this.scoreMove(copy, b) - this.scoreMove(copy, a));
 
         let bestScore = -Infinity;
         let bestMove = null;
 
-        const copy = engine.minimalClone();
-
         for (const move of moves) {
             copy.MovePiece(move.fr, move.fc, move.tr, move.tc, move.promote);
+            this.moveCount++;
 
             const score = -this.minimax(copy, depth - 1, -Infinity, Infinity);
 
@@ -139,7 +145,7 @@ export class AIV5 {
 
         // Terminal condition
         if (depth === 0 || engineState.gameCondition !== 'PLAYING') {
-            return this.evaluate(engineState);
+            return this.quiescence(engineState, alpha, beta);
         }
 
         let moves = engineState.getPlayerLegalMoves(engineState.turn === 0);
@@ -147,12 +153,13 @@ export class AIV5 {
         // Order moves
         moves.sort((a, b) => this.scoreMove(engineState, b) - this.scoreMove(engineState, a));
 
-        if (moves.length === 0) return this.evaluate(engineState);
+        if (moves.length === 0) return this.quiescence(engineState, alpha, beta);
 
         let best = -Infinity;
 
         for (const move of moves) {
             engineState.MovePiece(move.fr, move.fc, move.tr, move.tc, move.promote);
+            this.moveCount++;
 
             // const copy = engineState.minimalClone();
             // copy.MovePiece(move.fr, move.fc, move.tr, move.tc, move.promote);
@@ -191,9 +198,12 @@ export class AIV5 {
         if (move.promote) score += 1000;
 
         // Check bonus
-        const copy = engineState.minimalClone();
-        copy.MovePiece(move.fr, move.fc, move.tr, move.tc, move.promote);
-        if (copy.isKingInCheck(!engineState.isWhite(moving))) score += 50;
+        engineState.MovePiece(move.fr, move.fc, move.tr, move.tc, move.promote);
+        this.moveCount++;
+        
+        if (engineState.isKingInCheck(!engineState.isWhite(moving))) score += 50;
+
+        engineState.undoMove();
 
         return score;
     }
@@ -234,10 +244,44 @@ export class AIV5 {
         score -= engineState.totalPlies * 2;
 
         // Game-ending states
+        const result = engineState.evaluateEndConditions();
+        if (result) engineState.gameCondition = result;
+
         if (engineState.gameCondition.startsWith('WHITE_WIN')) score += 999999 - engineState.totalPlies * 50;
         else if (engineState.gameCondition.startsWith('BLACK_WIN')) score += -999999 + engineState.totalPlies * 50;
         else if (engineState.gameCondition.startsWith('DRAW')) score += -500000;
 
+        this.count++;
+
         return engineState.turn === 0 ? score : -score;
+    }
+
+    quiescence(engineState, alpha, beta) {
+        this.nodes++;
+
+        const standPat = this.evaluate(engineState);
+        if (standPat >= beta) return beta;
+        if (alpha < standPat) alpha = standPat;
+
+        // Only consider captures and promotions
+        const moves = engineState.getPlayerLegalMoves(engineState.turn === 0)
+            .filter(m => !engineState.isEmpty(engineState.board[m.tr][m.tc]) || m.promote);
+
+        // Optional: sort captures by MVV-LVA
+        moves.sort((a, b) => this.scoreMove(engineState, b) - this.scoreMove(engineState, a));
+
+        for (const move of moves) {
+            engineState.MovePiece(move.fr, move.fc, move.tr, move.tc, move.promote);
+            this.moveCount++;
+
+            const score = -this.quiescence(engineState, -beta, -alpha);
+
+            engineState.undoMove();
+
+            if (score >= beta) return beta;
+            if (score > alpha) alpha = score;
+        }
+
+        return alpha;
     }
 }

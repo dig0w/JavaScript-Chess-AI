@@ -24,6 +24,7 @@ v3 vs v4.1    Black Won   26699 - 27278   62
 v4.1 vs v4.1  Black Won   26699 - 27278   62
 v3 vs v4      White Won   21829 - 16680   39
 v4 vs v4      White Won   28495 - 24580   45
+v4 vs v5.1    White Won   16189 - 78772   30
 
 
 W vs Stockfish    Result      Nodes     Moves

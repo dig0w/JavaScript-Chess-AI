@@ -5,3 +5,6 @@ Killer move heuristic
 v6
 Transposition Table
 History heuristic
+
+
+getPositionKey() takes arround 0.002 ms from MovePiece
