@@ -238,7 +238,7 @@ export class ChessEngine {
         }
 
         // Switch turn
-        this.SwitchTurn();
+        if (this.gameCondition == 'PLAYING') this.SwitchTurn();
 
         // UI
         if (this.renderer) {

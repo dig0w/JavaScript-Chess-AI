@@ -53,7 +53,7 @@ export class ChessRender {
                 sq.dataset.rank = this.engine.rows - r;
                 sq.dataset.file = String.fromCharCode(97 + c);
 
-                if ((r + c) % 2 === 0) {
+                if ((r + c) % 2 === 1) {
                     sq.classList.add('dark');
                 }
 

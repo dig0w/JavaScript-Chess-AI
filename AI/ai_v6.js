@@ -1,6 +1,6 @@
 import { delay } from '../utils.js';
 
-export class AIV5 {
+export class AIV6 {
     constructor(engine = null, playsWhite = false, depth = 2) {
         this.engine = engine;
         this.playsWhite = playsWhite;
@@ -80,6 +80,8 @@ export class AIV5 {
 
         this.killerMoves = {};
 
+        this.history = Array.from({ length: engine.rows * engine.cols }, () => new Array(engine.rows * engine.cols).fill(0));
+
         this.nodes = 0;
         this.totalNodes = 0;
 
@@ -114,27 +116,51 @@ export class AIV5 {
     }
 
     bestMove(depth) {
-        const engine = this.engine;
-        const moves = engine.getPlayerLegalMoves(engine.turn === 0);
+        // Generate moves
+        const moves = this.engine.getPlayerLegalMoves(this.engine.turn === 0);
+            if (moves.length === 0) return null;
 
-        const copy = engine.minimalClone();
+        const copy = this.engine.minimalClone();
 
-        // Move ordering: sort moves by heuristic
-        moves.sort((a, b) => this.scoreMove(copy, b) - this.scoreMove(copy, a));
+        // Order moves
+        moves.sort((a, b) => this.scoreMove(copy, b, depth) - this.scoreMove(copy, a, depth));
 
-        let bestScore = -Infinity;
+        // let bestScore = -Infinity;
         let bestMove = null;
 
-        for (const move of moves) {
+        let alpha = -Infinity;
+        let beta = Infinity;
+
+        // for (const move of moves) {
+        for (let i = 0; i < moves.length; i++) {
+            const move = moves[i];
+
             copy.MovePiece(move.fr, move.fc, move.tr, move.tc, move.promote);
             this.moveCount++;
 
-            const score = -this.minimax(copy, depth - 1, -Infinity, Infinity);
+            // const score = -this.minimax(copy, depth - 1, -Infinity, Infinity);
+            let score;
+            if (i === 0) {
+                // Full window search for first move
+                score = -this.minimax(copy, depth - 1, -beta, -alpha);
+            } else {
+                // PVS: narrow window first
+                score = -this.minimax(copy, depth - 1, -alpha - 1, -alpha);
+
+                // If it fails, research with full window
+                if (score > alpha) {
+                    score = -this.minimax(copy, depth - 1, -beta, -alpha);
+                }
+            }
 
             copy.undoMove();
 
-            if (score > bestScore) {
-                bestScore = score;
+            // if (score > bestScore) {
+            //     bestScore = score;
+            //     bestMove = move;
+            // }
+            if (score > alpha) {
+                alpha = score;
                 bestMove = move;
             }
         }
@@ -150,43 +176,25 @@ export class AIV5 {
             return this.quiescence(engineState, alpha, beta);
         }
 
-        let moves = engineState.getPlayerLegalMoves(engineState.turn === 0);
+        // Generate moves
+        const moves = engineState.getPlayerLegalMoves(engineState.turn === 0);
             if (moves.length === 0) return this.quiescence(engineState, alpha, beta);
 
         // Order moves
-        moves.sort((a, b) => this.scoreMove(engineState, b) - this.scoreMove(engineState, a));
-
-        // Move ordering: first apply killer moves at this depth
-        if (this.killerMoves[depth]) {
-            moves.sort((a, b) => {
-                const aIsKiller = this.killerMoves[depth].some(k => 
-                    k.fr === a.fr && k.fc === a.fc && k.tr === a.tr && k.tc === a.tc
-                );
-                const bIsKiller = this.killerMoves[depth].some(k => 
-                    k.fr === b.fr && k.fc === b.fc && k.tr === b.tr && k.tc === b.tc
-                );
-
-                if (aIsKiller && !bIsKiller) return -1;
-                if (!aIsKiller && bIsKiller) return 1;
-
-                // fallback to MVV-LVA or existing score
-                return this.scoreMove(engineState, b) - this.scoreMove(engineState, a);
-            });
-        }
+        moves.sort((a, b) => this.scoreMove(engineState, b, depth) - this.scoreMove(engineState, a, depth));
 
         let best = -Infinity;
+        const depthKey = depth;
 
         for (const move of moves) {
+            const targetBefore = engineState.board[move.tr][move.tc];
+            const isCapture = !engineState.isEmpty(targetBefore);
+
             engineState.MovePiece(move.fr, move.fc, move.tr, move.tc, move.promote);
             this.moveCount++;
 
-            // const copy = engineState.minimalClone();
-            // copy.MovePiece(move.fr, move.fc, move.tr, move.tc, move.promote);
+            const tactical = move.promote ? 900 : 0;
 
-            let tactical = 0;
-            if (move.promote) tactical += 900;
-
-            // const score = -this.minimax(copy, depth - 1, -beta, -alpha) + tactical;
             const score = -this.minimax(engineState, depth - 1, -beta, -alpha) + tactical;
 
             engineState.undoMove();
@@ -195,14 +203,22 @@ export class AIV5 {
             if (score > alpha) alpha = score;
 
             if (alpha >= beta) {
-                // Store this move as a killer move
-                if (!this.killerMoves[depth]) this.killerMoves[depth] = [];
-                const km = this.killerMoves[depth];
+                // Store killer move (up to 2)
+                if (!this.killerMoves[depthKey]) this.killerMoves[depthKey] = [];
+                const km = this.killerMoves[depthKey];
                 // Avoid duplicates
                 if (!km.some(k => k.fr === move.fr && k.fc === move.fc && k.tr === move.tr && k.tc === move.tc && k.promote === move.promote)) {
                     km.unshift({ fr: move.fr, fc: move.fc, tr: move.tr, tc: move.tc, promote: move.promote });
-                    if (km.length > 2) km.pop(); // keep only 2 killer moves
+                    if (km.length > 2) km.pop();
                 }
+
+                if (!isCapture && !move.promote) {
+                    const idxFrom = move.fr * engineState.cols + move.fc;
+                    const idxTo   = move.tr * engineState.cols + move.tc;
+
+                    this.history[idxFrom][idxTo] += depthKey * depthKey;
+                }
+
                 break; // beta cutoff
             }
         }
@@ -210,7 +226,7 @@ export class AIV5 {
         return best;
     }
 
-    scoreMove(engineState, move) {
+    scoreMove(engineState, move, depthKey = -1) {
         const target = engineState.board[move.tr][move.tc];
         const moving = engineState.board[move.fr][move.fc];
 
@@ -220,11 +236,12 @@ export class AIV5 {
         if (!engineState.isEmpty(target)) {
             const victimValue = this.piecePoints[target.toUpperCase()] || 0;
             const attackerValue = this.piecePoints[moving.toUpperCase()] || 0;
-            score += victimValue * 10 - attackerValue;
+            score += victimValue * 100 - attackerValue;
+            score += 1000;
         }
 
         // 2. Promotions
-        if (move.promote) score += 1000;
+        if (move.promote) score += 2000;
 
         // 3. Check bonus
         engineState.MovePiece(move.fr, move.fc, move.tr, move.tc, move.promote);
@@ -232,7 +249,58 @@ export class AIV5 {
             if (engineState.isKingInCheck(!engineState.isWhite(moving))) score += 50;
         engineState.undoMove();
 
+        // 4. Killer move
+        const km = this.killerMoves[depthKey];
+        if (km) {
+            for (let i = 0; i < km.length; i++) {
+                const k = km[i];
+                if (k.fr === move.fr && k.fc === move.fc && k.tr === move.tr && k.tc === move.tc && k.promote === move.promote) {
+                    score += (i === 0) ? 1500 : 1000;
+                }
+            }
+        }
+
+        // 5. History heuristic
+        if (engineState.isEmpty(target) && !move.promote) {
+            const fromIdx = move.fr * engineState.cols + move.fc;
+            const toIdx = move.tr * engineState.cols + move.tc;
+            score += this.history[fromIdx][toIdx];
+        }
+
         return score;
+    }
+
+    quiescence(engineState, alpha, beta, qDepth = 0) {
+        if (qDepth > 100) return this.evaluate(engineState);
+
+        this.nodes++;
+
+        const standPat = this.evaluate(engineState);
+        if (standPat >= beta) return beta;
+        if (alpha < standPat) alpha = standPat;
+
+        // Only consider captures and promotions
+        const moves = engineState.getPlayerLegalMoves(engineState.turn === 0)
+            .filter(m => !engineState.isEmpty(engineState.board[m.tr][m.tc]) || m.promote);
+
+            if (moves.length === 0) return standPat;
+
+        // Optional: sort captures by MVV-LVA
+        moves.sort((a, b) => this.scoreMove(engineState, b) - this.scoreMove(engineState, a));
+
+        for (const move of moves) {
+            engineState.MovePiece(move.fr, move.fc, move.tr, move.tc, move.promote);
+            this.moveCount++;
+
+            const score = -this.quiescence(engineState, -beta, -alpha, qDepth + 1);
+
+            engineState.undoMove();
+
+            if (score >= beta) return beta;
+            if (score > alpha) alpha = score;
+        }
+
+        return alpha;
     }
 
     evaluate(engineState) {
@@ -281,36 +349,5 @@ export class AIV5 {
         this.count++;
 
         return engineState.turn === 0 ? score : -score;
-    }
-
-    quiescence(engineState, alpha, beta, qDepth = 0) {
-        if (qDepth > 100) return this.evaluate(engineState);
-
-        this.nodes++;
-
-        const standPat = this.evaluate(engineState);
-        if (standPat >= beta) return beta;
-        if (alpha < standPat) alpha = standPat;
-
-        // Only consider captures and promotions
-        const moves = engineState.getPlayerLegalMoves(engineState.turn === 0)
-            .filter(m => !engineState.isEmpty(engineState.board[m.tr][m.tc]) || m.promote);
-
-        // Optional: sort captures by MVV-LVA
-        moves.sort((a, b) => this.scoreMove(engineState, b) - this.scoreMove(engineState, a));
-
-        for (const move of moves) {
-            engineState.MovePiece(move.fr, move.fc, move.tr, move.tc, move.promote);
-            this.moveCount++;
-
-            const score = -this.quiescence(engineState, -beta, -alpha, qDepth + 1);
-
-            engineState.undoMove();
-
-            if (score >= beta) return beta;
-            if (score > alpha) alpha = score;
-        }
-
-        return alpha;
     }
 }

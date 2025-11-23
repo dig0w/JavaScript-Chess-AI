@@ -134,15 +134,13 @@ ul {
     --bg-img: none;
     background-image: var(--bg-img);
     background-size: cover;
+    background-color: rgba(var(--light-square), 1);
 
     font-size: 24px;
 
     cursor: pointer;
 }
 /* Checkerboard pattern */
-.square {
-    background-color: rgba(var(--light-square), 1);
-}
 .square:hover,.square:focus {
     background-color: rgba(var(--light-square), .5);
 }
