@@ -232,10 +232,8 @@ export class ChessEngine {
         this.totalPlies++;
 
         // Game condition
-        if (this.renderer) {
-            const result = this.evaluateEndConditions();
+        const result = this.evaluateEndConditions();
             if (result) this.gameCondition = result;
-        }
 
         // Switch turn
         if (this.gameCondition == 'PLAYING') this.SwitchTurn();
@@ -750,11 +748,40 @@ export class ChessEngine {
     }
 
     getPositionKey() {
-        const rows = this.board.map(r => r.join('')).join('|'); // e.g. "rnbqkbnr|pppppppp|........|..."
-        const cr = (this.castlingRights.whiteKingSide ? 'K':'') + (this.castlingRights.whiteQueenSide ? 'Q':'') +
-                (this.castlingRights.blackKingSide ? 'k':'') + (this.castlingRights.blackQueenSide ? 'q':'');
-        const ep = this.enPassantSquare ? `${this.enPassantSquare.r},${this.enPassantSquare.c}` : '-';
-        return rows + ' ' + this.turn + ' ' + cr + ' ' + ep;
+        const board = this.board;
+        const out = [];
+
+        for (let r = 0; r < 8; r++) {
+            const row = board[r];
+            // push raw chars
+            for (let c = 0; c < 8; c++) out.push(row[c]);
+            out.push('|');
+        }
+
+        // turn
+        out.push(this.turn, ' ');
+
+        // castling
+        const cr = this.castlingRights;
+        if (cr.whiteKingSide) out.push('K');
+        if (cr.whiteQueenSide) out.push('Q');
+        if (cr.blackKingSide) out.push('k');
+        if (cr.blackQueenSide) out.push('q');
+        out.push(' ');
+
+        // en passant
+        const ep = this.enPassantSquare;
+        if (ep) {
+            out.push(
+                ep.r < 10 ? ep.r : String(ep.r), // avoid template literal
+                ',',
+                ep.c < 10 ? ep.c : String(ep.c)
+            );
+        } else {
+            out.push('-');
+        }
+
+        return out.join('');
     }
 
     inside(r, c) {

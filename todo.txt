@@ -3,4 +3,5 @@ Iterative Deepening
 Null Move Pruning
 Late Move Reductions (LMR)
 
-getPositionKey() takes arround 0.002 ms from MovePiece
+penalize losing the ability to castle
+find a way to only calc end eval, when needed

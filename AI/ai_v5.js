@@ -241,7 +241,7 @@ export class AIV5 {
         for (let r = 0; r < engineState.rows; r++) {
             for (let c = 0; c < engineState.cols; c++) {
                 const p = engineState.board[r][c];
-                if (engineState.isEmpty(p)) continue;
+                    if (engineState.isEmpty(p)) continue;
 
                 // Material
                 score += this.piecePoints[p] || 0;

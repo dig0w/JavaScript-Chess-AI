@@ -15,7 +15,25 @@ export class AIV6 {
             'p': -100, 'n': -320, 'b': -330, 'r': -500, 'q': -900, 'k': -20000
         };
 
-        this.pst = {
+        this.phaseWeight = {
+            P: 0,
+            N: 1,
+            B: 1,
+            R: 2,
+            Q: 4,
+            K: 0
+        };
+
+        this.pieceVal = {
+            P: { mg: 100, eg: 120 },
+            N: { mg: 320, eg: 310 },
+            B: { mg: 330, eg: 330 },
+            R: { mg: 500, eg: 510 },
+            Q: { mg: 900, eg: 920 },
+            K: { mg: 20000, eg: 20000 },
+        };
+
+        this.pstMG = {
             P: [
                 [0, 0, 0, 0, 0, 0, 0, 0],
                 [5, 10, 10, -20, -20, 10, 10, 5],
@@ -78,6 +96,69 @@ export class AIV6 {
             ]
         };
 
+        this.pstEG = {
+            P: [
+                [0, 0, 0, 0, 0, 0, 0, 0],
+                [10, 10, 10, 10, 10, 10, 10, 10],
+                [5, 5, 5, 5, 5, 5, 5, 5],
+                [0, 0, 0, 10, 10, 0, 0, 0],
+                [0, 0, 0, 20, 20, 0, 0, 0],
+                [5, 5, 5, 30, 30, 5, 5, 5],
+                [10, 10, 10, 50, 50, 10, 10, 10],
+                [0, 0, 0, 0, 0, 0, 0, 0]
+            ],
+            N: [
+                [-40,-30,-20,-20,-20,-20,-30,-40],
+                [-30,-10, 0, 5, 5, 0,-10,-30],
+                [-20, 5,10,15,15,10, 5,-20],
+                [-20, 0,15,20,20,15, 0,-20],
+                [-20, 5,15,20,20,15, 5,-20],
+                [-20, 0,10,15,15,10, 0,-20],
+                [-30,-10, 0, 0, 0, 0,-10,-30],
+                [-40,-30,-20,-20,-20,-20,-30,-40]
+            ],
+            B: [
+                [-20,-10,-10,-10,-10,-10,-10,-20],
+                [-10, 0, 0, 0, 0, 0, 0,-10],
+                [-10, 0, 5,10,10, 5, 0,-10],
+                [-10, 0,10,15,15,10, 0,-10],
+                [-10, 0,10,15,15,10, 0,-10],
+                [-10, 5,10,10,10,10, 5,-10],
+                [-10, 0, 0, 0, 0, 0, 0,-10],
+                [-20,-10,-10,-10,-10,-10,-10,-20]
+            ],
+            R: [
+                [0,0,0,5,5,0,0,0],
+                [-5,0,0,0,0,0,0,-5],
+                [-5,0,0,0,0,0,0,-5],
+                [-5,0,0,0,0,0,0,-5],
+                [-5,0,0,0,0,0,0,-5],
+                [-5,0,0,0,0,0,0,-5],
+                [5,10,10,10,10,10,10,5],
+                [0,0,0,0,0,0,0,0]
+            ],
+            Q: [
+                [-20,-10,-10,-5,-5,-10,-10,-20],
+                [-10,0,0,0,0,0,0,-10],
+                [-10,0,5,5,5,5,0,-10],
+                [-5,0,5,5,5,5,0,-5],
+                [-5,0,5,5,5,5,0,-5],
+                [-10,5,5,5,5,5,0,-10],
+                [-10,0,5,0,0,0,0,-10],
+                [-20,-10,-10,-5,-5,-10,-10,-20]
+            ],
+            K: [
+                [-50,-40,-30,-20,-20,-30,-40,-50],
+                [-40,-20,-10,0,0,-10,-20,-40],
+                [-30,-10,20,30,30,20,-10,-30],
+                [-20,0,30,40,40,30,0,-20],
+                [-20,0,30,40,40,30,0,-20],
+                [-30,-10,20,30,30,20,-10,-30],
+                [-40,-20,-10,0,0,-10,-20,-40],
+                [-50,-40,-30,-20,-20,-30,-40,-50]
+            ]
+        };
+
         this.killerMoves = {};
 
         this.history = Array.from({ length: engine.rows * engine.cols }, () => new Array(engine.rows * engine.cols).fill(0));
@@ -102,7 +183,6 @@ export class AIV6 {
         this.nodes = 0;
 
         const best = this.bestMove(this.depth);
-        console.log('Best move:', best);
             if (!best) return;
 
         this.totalNodes += this.nodes;
@@ -125,20 +205,17 @@ export class AIV6 {
         // Order moves
         moves.sort((a, b) => this.scoreMove(copy, b, depth) - this.scoreMove(copy, a, depth));
 
-        // let bestScore = -Infinity;
         let bestMove = null;
 
         let alpha = -Infinity;
         let beta = Infinity;
 
-        // for (const move of moves) {
         for (let i = 0; i < moves.length; i++) {
             const move = moves[i];
 
             copy.MovePiece(move.fr, move.fc, move.tr, move.tc, move.promote);
             this.moveCount++;
 
-            // const score = -this.minimax(copy, depth - 1, -Infinity, Infinity);
             let score;
             if (i === 0) {
                 // Full window search for first move
@@ -155,15 +232,13 @@ export class AIV6 {
 
             copy.undoMove();
 
-            // if (score > bestScore) {
-            //     bestScore = score;
-            //     bestMove = move;
-            // }
             if (score > alpha) {
                 alpha = score;
                 bestMove = move;
             }
         }
+
+        console.log('Best move:', bestMove, alpha);
 
         return bestMove;
     }
@@ -173,6 +248,17 @@ export class AIV6 {
 
         // Terminal condition
         if (depth === 0 || engineState.gameCondition !== 'PLAYING') {
+            // Correct terminal scoring
+            if (engineState.gameCondition.startsWith('WHITE_WIN'))
+                return (1000000 - engineState.totalPlies * 50) * (this.playsWhite ? -1 : 1);
+
+            if (engineState.gameCondition.startsWith('BLACK_WIN'))
+                return (-1000000 - engineState.totalPlies * 50) * (this.playsWhite ? -1 : 1);
+
+            if (engineState.gameCondition.startsWith('DRAW'))
+                return 500; // draw = neutral
+
+            // No terminal state? → do QS
             return this.quiescence(engineState, alpha, beta);
         }
 
@@ -229,6 +315,7 @@ export class AIV6 {
     scoreMove(engineState, move, depthKey = -1) {
         const target = engineState.board[move.tr][move.tc];
         const moving = engineState.board[move.fr][move.fc];
+        const white = engineState.isWhite(moving);
 
         let score = 0;
 
@@ -243,13 +330,7 @@ export class AIV6 {
         // 2. Promotions
         if (move.promote) score += 2000;
 
-        // 3. Check bonus
-        engineState.MovePiece(move.fr, move.fc, move.tr, move.tc, move.promote);
-            this.moveCount++;
-            if (engineState.isKingInCheck(!engineState.isWhite(moving))) score += 50;
-        engineState.undoMove();
-
-        // 4. Killer move
+        // 5. Killer move
         const km = this.killerMoves[depthKey];
         if (km) {
             for (let i = 0; i < km.length; i++) {
@@ -260,7 +341,7 @@ export class AIV6 {
             }
         }
 
-        // 5. History heuristic
+        // 6. History heuristic
         if (engineState.isEmpty(target) && !move.promote) {
             const fromIdx = move.fr * engineState.cols + move.fc;
             const toIdx = move.tr * engineState.cols + move.tc;
@@ -304,31 +385,81 @@ export class AIV6 {
     }
 
     evaluate(engineState) {
-        let score = 0;
+        const board = engineState.board;
+        const rows = engineState.rows;
+        const cols = engineState.cols;
 
-        for (let r = 0; r < engineState.rows; r++) {
-            for (let c = 0; c < engineState.cols; c++) {
-                const p = engineState.board[r][c];
-                if (engineState.isEmpty(p)) continue;
+        let mg = 0;
+        let eg = 0;
+        let phase = 0;
+
+        for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < cols; c++) {
+                const p = board[r][c];
+                    if (engineState.isEmpty(p)) continue;
+
+                const white = engineState.isWhite(p);
+                const type = p.toUpperCase();
 
                 // Material
-                score += this.piecePoints[p] || 0;
+                const val = this.pieceVal[type];
+                const mgPst = this.pstMG[type];
+                const egPst = this.pstEG[type];
 
                 // PST bonus
-                const upper = p.toUpperCase();
-                const pstValue = (p === upper) ? this.pst[upper][r][c] : -this.pst[upper][engineState.rows - 1 - r][c];
-                score += pstValue;
+                const mgV = mgPst[r][c];
+                const egV = egPst[r][c];
 
-                // Pawn promotion proximity
-                if (p === 'P') {
-                    if (r === 1) score += 800;
-                    else if (r === 2) score += 300;
-                } else if (p === 'p') {
-                    if (r === engineState.rows - 2) score -= 800;
-                    else if (r === engineState.rows - 3) score -= 300;
+                if (white) {
+                    mg += val.mg + mgV;
+                    eg += val.eg + egV;
+                } else {
+                    mg -= val.mg + mgPst[7 - r][c];
+                    eg -= val.eg + egPst[7 - r][c];
                 }
+
+                if (p.toUpperCase() == 'P') {
+                    // Pawn promotion proximity
+                    if (white) {
+                        const rank = 7 - r;
+                        const value = Math.pow(rank / (rows - 1), 5);
+
+                        mg += value * this.pieceVal.Q.mg;
+                        eg += value * this.pieceVal.Q.eg;
+                    } else {
+                        const rank = r;
+                        const value = Math.pow(rank / (rows - 1), 5);
+
+                        mg -= value * this.pieceVal.Q.mg;
+                        eg -= value * this.pieceVal.Q.eg;
+                    }
+
+                    // Doubled pawns
+                    let pawnCount = 0;
+                    for (let rr = 0; rr < rows; rr++) {
+                        const sq = board[rr][c];
+                        if ((white && engineState.isWhite(sq)) || (!white && engineState.isBlack(sq))) pawnCount++;
+                    }
+                    if (pawnCount > 1) {
+                        const penalty = (pawnCount - 1) * 1;
+                        mg += white ? -penalty : penalty;
+                        eg += white ? -penalty : penalty;
+                    }
+                }
+
+                phase += this.phaseWeight[type];
             }
         }
+
+        // Normalize phase (0 = EG, 24 = MG)
+        if (phase > 24) phase = 24;
+
+        // Tapered eval
+        let score = (mg * phase + eg * (24 - phase)) / 24;
+
+        // King safety
+        if (engineState.isKingInCheck(true))  score -= 50;
+        if (engineState.isKingInCheck(false)) score += 50;
 
         // Mobility
         const whiteMoves = engineState.getPlayerLegalMoves(true).length;
@@ -337,14 +468,6 @@ export class AIV6 {
 
         // Discourage long games
         score -= engineState.totalPlies * 2;
-
-        // Game-ending states
-        const result = engineState.evaluateEndConditions();
-        if (result) engineState.gameCondition = result;
-
-        if (engineState.gameCondition.startsWith('WHITE_WIN')) score += 999999 - engineState.totalPlies * 50;
-        else if (engineState.gameCondition.startsWith('BLACK_WIN')) score += -999999 + engineState.totalPlies * 50;
-        else if (engineState.gameCondition.startsWith('DRAW')) score += -500000;
 
         this.count++;
 
