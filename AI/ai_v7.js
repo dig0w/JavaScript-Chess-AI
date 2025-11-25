@@ -163,11 +163,6 @@ export class AIV7 {
         this.history = Array.from({ length: engine.rows * engine.cols }, () => new Array(engine.rows * engine.cols).fill(0));
 
         this.TT = new Map();
-        this.zobrist = {
-            table: [],
-            side: Math.floor(Math.random() * 2 ** 32)
-        };
-        this.initZobrist();
 
         this.nodes = 0;
         this.totalNodes = 0;
@@ -254,7 +249,7 @@ export class AIV7 {
         this.nodes++;
 
         // Zobrist key
-        const key = this.computeZobrist(engineState);
+        const key = engineState.hash;
 
         // Check TT
         if (this.TT.has(key)) {
@@ -560,35 +555,5 @@ export class AIV7 {
         }
 
         return whiteFork ? -penalty : +penalty;
-    }
-
-
-    initZobrist() {
-        const pieces = ['P','N','B','R','Q','K','p','n','b','r','q','k'];
-        const squares = 64;
-        this.zobrist.table = {};
-
-        for (const p of pieces) {
-            this.zobrist.table[p] = [];
-            for (let i = 0; i < squares; i++) {
-                // Random 32-bit number
-                this.zobrist.table[p][i] = Math.floor(Math.random() * 2 ** 32);
-            }
-        }
-    }
-    // Compute Zobrist hash for a given board and turn
-    computeZobrist(engineState) {
-        let hash = 0;
-        for (let r = 0; r < 8; r++) {
-            for (let c = 0; c < 8; c++) {
-                const p = engineState.board[r][c];
-                if (engineState.isEmpty(p)) continue;
-                const sq = r * 8 + c;
-
-                hash ^= this.zobrist.table[p][sq];
-            }
-        }
-        if (engineState.turn === 0) hash ^= this.zobrist.side; // toggle for white/black turn
-        return hash;
     }
 }

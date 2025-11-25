@@ -51,7 +51,16 @@ export class ChessEngine {
 
         this.gameCondition = 'PLAYING';
         this.logs = [];
-        this.totalPlies = 0;        
+        this.totalPlies = 0;
+
+        this.hash = 0;
+        this.zobrist = {
+            piece: {},   // [piece][square]
+            castle: {},  // castling rights
+            ep: new Array(8).fill(0), // EP file hashes
+            side: Math.floor(Math.random() * 2**32)
+        };
+        this.initZobrist();
 
         this.renderer = null;
         this.count = 0;
@@ -62,6 +71,23 @@ export class ChessEngine {
 
         // Get pieces
         const originalPiece = this.board[fr][fc];
+
+
+        // --- ZOBRIST: remove moving piece from old square ---
+        this.zobristXorPiece(originalPiece, fr, fc);
+
+        // --- ZOBRIST: remove target piece (if any) ---
+        if (!this.isEmpty(this.board[tr][tc])) {
+            this.zobristXorPiece(this.board[tr][tc], tr, tc);
+        }
+
+        // --- ZOBRIST: remove en-passant state ---
+        this.zobristXorEP();
+
+        // --- ZOBRIST: remove castling rights ---
+        this.zobristXorCastleRights();
+
+
         let movingPiece = originalPiece;
             if (promotePiece) movingPiece = this.turn == 0 ? promotePiece.toUpperCase() : promotePiece.toLowerCase();
         let targetPiece = this.board[tr][tc];
@@ -83,6 +109,11 @@ export class ChessEngine {
                 this.board[tr][5] = this.board[tr][7];
                 this.board[tr][7] = '.';
 
+                // remove rook from old square
+                this.zobristXorPiece(this.isWhite(movingPiece) ? 'R' : 'r', tr, 7);
+                // add rook to new square
+                this.zobristXorPiece(this.isWhite(movingPiece) ? 'R' : 'r', tr, 5);
+
                 if (this.renderer) {
                     this.renderer.UpdateSquare(tr, 5);
                     this.renderer.UpdateSquare(tr, 7);
@@ -92,6 +123,11 @@ export class ChessEngine {
             } else if (tc === 2) { // Queen-side
                 this.board[tr][3] = this.board[tr][0];
                 this.board[tr][0] = '.';
+
+                // remove rook from old square
+                this.zobristXorPiece(this.isWhite(movingPiece) ? 'R' : 'r', tr, 0);
+                // add rook to new square
+                this.zobristXorPiece(this.isWhite(movingPiece) ? 'R' : 'r', tr, 3);
 
                 if (this.renderer) {
                     this.renderer.UpdateSquare(tr, 3);
@@ -109,6 +145,9 @@ export class ChessEngine {
             targetPiece = this.board[capRow][tc];
             this.board[capRow][tc] = '.';
 
+            // remove pawn from square
+            this.zobristXorPiece(targetPiece, capRow, tc);
+
             if (this.renderer) this.renderer.UpdateSquare(capRow, tc);
 
             isEnPassantCapture = true;
@@ -117,7 +156,12 @@ export class ChessEngine {
         // Move piece
         this.board[tr][tc] = movingPiece;
         this.board[fr][fc] = '.';
-        
+
+
+        // --- ZOBRIST: add piece on new square ---
+        this.zobristXorPiece(movingPiece, tr, tc);
+
+
         const isCapture = !this.isEmpty(targetPiece) && this.isWhite(movingPiece) !== this.isWhite(targetPiece);
         if (this.renderer) {
             // Capture
@@ -180,6 +224,15 @@ export class ChessEngine {
             this.enPassantSquare = { r: epRow, c: fc };
         }
 
+        // --- ZOBRIST: add new EP ---
+        this.zobristXorEP();
+
+        // --- ZOBRIST: add new castling rights ---
+        this.zobristXorCastleRights();
+
+        // --- ZOBRIST: toggle side to move ---
+        this.hash ^= this.zobrist.side;
+
         // Store move
         this.logs.push({
             fr, fc, tr, tc,
@@ -232,7 +285,6 @@ export class ChessEngine {
         if (this.logs.length === 0) return;
 
         const lastMove = this.logs.pop();
-
         this.positionHistory.pop();
 
         const {
@@ -261,41 +313,73 @@ export class ChessEngine {
 
         const white = this.isWhite(movingPiece);
 
+        // --- ZOBRIST: undo toggling side ---
+        this.hash ^= this.zobrist.side;
+
+        // --- ZOBRIST: remove current EP and castle states ---
+        this.zobristXorEP();
+        this.zobristXorCastleRights();
+
+        // Undo pawn promotion
+        let pieceRestored = originalPiece;
+        if (promotePiece) {
+            pieceRestored = white ? 'P' : 'p';
+        }
+
+        // ---- ZOBRIST: remove piece from NEW square ----
+        this.zobristXorPiece(originalPiece, tr, tc);
+
         // Restore piece positions
-        this.board[fr][fc] = originalPiece;
+        this.board[fr][fc] = pieceRestored;
         this.board[tr][tc] = targetPiece;
+
+        // ---- ZOBRIST: add piece to OLD square ----
+        this.zobristXorPiece(pieceRestored, fr, fc);
 
         // Undo en passant capture
         if (isEnPassantCapture && enPassantCaptureRow != null) {
+            const pawn = white ? 'p' : 'P';
+
             const capRow = enPassantCaptureRow;
-            this.board[capRow][tc] = white ? 'p' : 'P';
+            this.board[capRow][tc] = pawn;
             this.board[white ? capRow - 1 : capRow + 1][tc] = '.';
+
+            // zobrist add pawn back
+            this.zobristXorPiece(pawn, capRow, tc);
 
             if (this.renderer) this.renderer.UpdateSquare(capRow, tc);
         }
 
         // Undo castling
+        const rookPiece = white ? 'R' : 'r';
         if (castle === 1) { // King-side
+            // remove rook from f-file
+            this.zobristXorPiece(rookPiece, tr, 5);
+
             this.board[tr][7] = this.board[tr][5];
             this.board[tr][5] = '.';
+
+            // add rook to original square
+            this.zobristXorPiece(rookPiece, tr, 7);
 
             if (this.renderer) {
                 this.renderer.UpdateSquare(tr, 7);
                 this.renderer.UpdateSquare(tr, 5);
             }
         } else if (castle === 2) { // Queen-side
+            // remove rook from d-file
+            this.zobristXorPiece(rookPiece, tr, 3);
+
             this.board[tr][0] = this.board[tr][3];
             this.board[tr][3] = '.';
+
+            // add rook to original square
+            this.zobristXorPiece(rookPiece, tr, 0);
 
             if (this.renderer) {
                 this.renderer.UpdateSquare(tr, 0);
                 this.renderer.UpdateSquare(tr, 3);
             }
-        }
-
-        // Undo pawn promotion
-        if (promotePiece) {
-            this.board[fr][fc] = white ? 'P' : 'p';
         }
 
         // Restore castling rights
@@ -304,8 +388,14 @@ export class ChessEngine {
         this.castlingRights.blackKingSide = castlingRights.blackKingSide;
         this.castlingRights.blackQueenSide = castlingRights.blackQueenSide;
 
+        // Zobrist: add OLD castling rights
+        this.zobristXorCastleRights();
+
         // Restore en passant square
         this.enPassantSquare = enPassantSquare ? { r: enPassantSquare.r, c: enPassantSquare.c } : null;
+
+        // Zobrist: add OLD EP state
+        this.zobristXorEP();
 
         // Restore halfmove clock
         this.halfmoveClock = halfmoveClock;
@@ -323,6 +413,10 @@ export class ChessEngine {
         this.turn = turn;
 
         this.totalPlies--;
+
+        // --- ZOBRIST: add restored EP and castling rights ---
+        this.zobristXorEP();
+        this.zobristXorCastleRights();
 
         // UI updates
         if (this.renderer) {
@@ -839,5 +933,47 @@ export class ChessEngine {
         clone.totalPlies = this.totalPlies;
 
         return clone;
+    }
+
+    initZobrist() {
+        const pieces = ['P','N','B','R','Q','K','p','n','b','r','q','k'];
+        this.zobrist.piece = {};
+
+        for (const p of pieces) {
+            this.zobrist.piece[p] = [];
+            for (let i = 0; i < 64; i++) {
+                this.zobrist.piece[p][i] = Math.floor(Math.random() * 2**32);
+            }
+        }
+
+        // Castling rights (4 booleans)
+        this.zobrist.castle.whiteKingSide  = Math.floor(Math.random() * 2**32);
+        this.zobrist.castle.whiteQueenSide = Math.floor(Math.random() * 2**32);
+        this.zobrist.castle.blackKingSide  = Math.floor(Math.random() * 2**32);
+        this.zobrist.castle.blackQueenSide = Math.floor(Math.random() * 2**32);
+
+        // En passant for each file
+        for (let f = 0; f < 8; f++) {
+            this.zobrist.ep[f] = Math.floor(Math.random() * 2**32);
+        }
+    }
+
+    zobristXorPiece(piece, r, c) {
+        const sq = r * 8 + c;
+        this.hash ^= this.zobrist.piece[piece][sq];
+    }
+
+    zobristXorCastleRights() {
+        const cr = this.castlingRights;
+        if (cr.whiteKingSide)  this.hash ^= this.zobrist.castle.whiteKingSide;
+        if (cr.whiteQueenSide) this.hash ^= this.zobrist.castle.whiteQueenSide;
+        if (cr.blackKingSide)  this.hash ^= this.zobrist.castle.blackKingSide;
+        if (cr.blackQueenSide) this.hash ^= this.zobrist.castle.blackQueenSide;
+    }
+
+    zobristXorEP() {
+        if (this.enPassantSquare) {
+            this.hash ^= this.zobrist.ep[this.enPassantSquare.c];
+        }
     }
 }
