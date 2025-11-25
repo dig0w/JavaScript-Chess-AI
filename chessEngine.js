@@ -718,8 +718,6 @@ export class ChessEngine {
     SwitchTurn() {
         this.turn = 1 - this.turn;
 
-        this.hash ^= this.zobrist.side;
-
         if (this.turn == 0 && this.whiteAI) this.whiteAI?.Play();
         if (this.turn == 1 && this.blackAI) this.blackAI?.Play();
     }

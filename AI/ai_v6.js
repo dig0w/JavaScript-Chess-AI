@@ -315,7 +315,6 @@ export class AIV6 {
     scoreMove(engineState, move, depthKey = -1) {
         const target = engineState.board[move.tr][move.tc];
         const moving = engineState.board[move.fr][move.fc];
-        const white = engineState.isWhite(moving);
 
         let score = 0;
 
