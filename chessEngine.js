@@ -1,29 +1,4 @@
-// [
-//         ['r', 'n', 'k', 'b', 'q'],
-//         ['p', 'p', 'p', 'p', 'p'],
-//         ['.', '.', '.', '.', '.'],
-//         ['P', 'P', 'P', 'P','P'],
-//         ['R', 'N', 'K', 'B', 'Q']
-//     ]
-
-// [
-//         ['.', '.', 'k', '.', '.'],
-//         ['.', '.', '.', '.', '.'],
-//         ['.', '.', '.', '.', '.'],
-//         ['P', 'P', 'P', 'P','P'],
-//         ['R', 'N', 'K', 'B', 'Q']
-//     ]
-
-// [
-//         ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
-//         ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
-//         ['.', '.', '.', '.', '.', '.', '.', '.'],
-//         ['.', '.', '.', '.', '.', '.', '.', '.'],
-//         ['.', '.', '.', '.', '.', '.', '.', '.'],
-//         ['.', '.', '.', '.', '.', '.', '.', '.'],
-//         ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'],
-//         ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
-//     ]
+import { rand64 } from './utils.js';
 
 export class ChessEngine {
     constructor(board = [
@@ -76,7 +51,7 @@ export class ChessEngine {
 
         this.gameCondition = 'PLAYING';
         this.logs = [];
-        this.totalPlies = 0;
+        this.totalPlies = 0;        
 
         this.renderer = null;
         this.count = 0;
@@ -138,11 +113,11 @@ export class ChessEngine {
 
             isEnPassantCapture = true;
         }
-
+        
         // Move piece
         this.board[tr][tc] = movingPiece;
         this.board[fr][fc] = '.';
-
+        
         const isCapture = !this.isEmpty(targetPiece) && this.isWhite(movingPiece) !== this.isWhite(targetPiece);
         if (this.renderer) {
             // Capture
@@ -743,6 +718,8 @@ export class ChessEngine {
     SwitchTurn() {
         this.turn = 1 - this.turn;
 
+        this.hash ^= this.zobrist.side;
+
         if (this.turn == 0 && this.whiteAI) this.whiteAI?.Play();
         if (this.turn == 1 && this.blackAI) this.blackAI?.Play();
     }
@@ -835,7 +812,6 @@ export class ChessEngine {
         const rank = (this.rows - r).toString();
         return file + rank;
     }
-
 
     minimalClone() {
         const clone = new ChessEngine(

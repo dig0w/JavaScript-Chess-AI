@@ -424,14 +424,14 @@ export class AIV6 {
                         const rank = 7 - r;
                         const value = Math.pow(rank / (rows - 1), 5);
 
-                        mg += value * this.pieceVal.Q.mg;
-                        eg += value * this.pieceVal.Q.eg;
+                        mg += value * (this.pieceVal.Q.mg / 1.5);
+                        eg += value * (this.pieceVal.Q.eg - 20);
                     } else {
                         const rank = r;
                         const value = Math.pow(rank / (rows - 1), 5);
 
-                        mg -= value * this.pieceVal.Q.mg;
-                        eg -= value * this.pieceVal.Q.eg;
+                        mg -= value * (this.pieceVal.Q.mg / 1.5);
+                        eg -= value * (this.pieceVal.Q.eg - 20);
                     }
 
                     // Doubled pawns
@@ -458,13 +458,21 @@ export class AIV6 {
         let score = (mg * phase + eg * (24 - phase)) / 24;
 
         // King safety
-        if (engineState.isKingInCheck(true))  score -= 50;
-        if (engineState.isKingInCheck(false)) score += 50;
+        if (engineState.isKingInCheck(true))  score -= 20;
+        if (engineState.isKingInCheck(false)) score += 20;
 
         // Mobility
-        const whiteMoves = engineState.getPlayerLegalMoves(true).length;
-        const blackMoves = engineState.getPlayerLegalMoves(false).length;
-        score += (whiteMoves - blackMoves) * 5;
+        const whiteMoves = engineState.getPlayerLegalMoves(true);
+        const blackMoves = engineState.getPlayerLegalMoves(false);
+        score += (whiteMoves.length - blackMoves.length) * 5;
+
+        // Hanging pieces penalty
+        score += this.hangingPenalty(blackMoves, true, board, this.pieceVal);
+        score += this.hangingPenalty(whiteMoves, false, board, this.pieceVal);
+
+        // Fork penalty
+        score += this.forkPenalty(blackMoves, board, this.pieceVal, true);
+        score += this.forkPenalty(whiteMoves, board, this.pieceVal, false);
 
         // Discourage long games
         score -= engineState.totalPlies * 2;
@@ -472,5 +480,55 @@ export class AIV6 {
         this.count++;
 
         return engineState.turn === 0 ? score : -score;
+    }
+
+    hangingPenalty(moves, isWhitePiece, board, pieceVal) {
+        if (!moves) return 0;
+
+        let penalty = 0;
+
+        for (const m of moves) {
+            if (!m.capture) continue; // only capture moves
+            const target = board[m.to.r][m.to.c];
+            if (!target) continue;
+
+            if (isWhitePiece && target === target.toUpperCase()) {
+                penalty -= pieceVal[target.toUpperCase()].mg * 0.2;
+            }
+            if (!isWhitePiece && target === target.toLowerCase()) {
+                penalty += pieceVal[target.toUpperCase()].mg * 0.2;
+            }
+        }
+        return penalty;
+    }
+
+    forkPenalty(moves, board, pieceVal, whiteFork) {
+        if (!moves) return 0;
+
+        let penalty = 0;
+
+        for (const m of moves) {
+            if (!m.capture) continue;
+            const from = m.from;
+            const piece = board[from.r][from.c];
+
+            // only apply if the attacking piece is minor/major (not pawn)
+            const attackerType = piece.toUpperCase();
+            if (attackerType === "P") continue;
+
+            let hits = 0;
+            for (const m2 of moves) {
+                if (m2 === m) continue;
+                if (!m2.capture) continue;
+                const target = board[m2.to.r][m2.to.c];
+                if (!target) continue;
+                const val = pieceVal[target.toUpperCase()].mg;
+                if (val >= pieceVal.N.mg) hits++; // knights or better
+            }
+
+            if (hits >= 2) penalty += 30; // lightweight fork punishment
+        }
+
+        return whiteFork ? -penalty : +penalty;
     }
 }

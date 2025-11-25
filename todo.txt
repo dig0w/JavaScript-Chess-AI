@@ -2,6 +2,6 @@ Transposition Table
 Iterative Deepening
 Null Move Pruning
 Late Move Reductions (LMR)
-
 penalize losing the ability to castle
+
 find a way to only calc end eval, when needed

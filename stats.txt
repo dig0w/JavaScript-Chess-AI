@@ -15,7 +15,7 @@ v2		        156 (e3)	288 (e6)
 v3		        156 (e3)	288 (e6)
 v4		        420 (Nc3)	460 (Nc6)
 v5		        824 (Nc3)	914 (Nc6)
-v6  		    653 (Nc3)	243 (Nc6)
+v6  		    416 (Nc3)	243 (Nc6)
 
 depth = 2
 W vs B        Result      Nodes            Moves
@@ -41,8 +41,8 @@ v4   (d=2)        Black Won   14604     38
 v4   (d=4)        Black Won   1739861   60
 v5   (d=2)        Black Won   107411    46
 v5   (d=4)        Black Won   2830887   82
-v6   (d=2)        Black Won   17254     46
-v6   (d=4)        Black Won   571577    40
+v6   (d=2)        Black Won   14057     42
+v6   (d=4)        Black Won   809544    48
 
 
 v5 (d=4) vs Stockfish (82 moves)
