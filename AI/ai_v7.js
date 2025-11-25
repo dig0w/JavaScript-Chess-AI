@@ -254,6 +254,8 @@ export class AIV7 {
         // Check TT
         if (this.TT.has(key)) {
             const entry = this.TT.get(key);
+
+            console.log('TT hit at depth:', depth);
             if (entry.depth >= depth) {
                 if (entry.flag === 'EXACT') return entry.value;
                 if (entry.flag === 'LOWERBOUND') alpha = Math.max(alpha, entry.value);
