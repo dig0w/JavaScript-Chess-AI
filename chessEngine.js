@@ -1,3 +1,14 @@
+// [
+//         ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
+//         ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
+//         ['.', '.', '.', '.', '.', '.', '.', '.'],
+//         ['.', '.', '.', '.', '.', '.', '.', '.'],
+//         ['.', '.', '.', '.', '.', '.', '.', '.'],
+//         ['.', '.', '.', '.', '.', '.', '.', '.'],
+//         ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'],
+//         ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
+//     ]
+
 export class ChessEngine {
     constructor(board = [
         ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
@@ -914,6 +925,8 @@ export class ChessEngine {
     }
 
     zobristXorPiece(piece, r, c) {
+        if (this.isEmpty(piece)) return;
+
         const sq = r * 8 + c;
         this.hash ^= this.zobrist.piece[piece][sq];
     }

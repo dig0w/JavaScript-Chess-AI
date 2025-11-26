@@ -32,12 +32,15 @@ v4 vs v5      Black Won   16189 - 78772    30
 v5 vs v5      White Won   124421 - 79011   31
 v5 vs v6      Draw TR     152143 - 30377   85
 v6 vs v6      Black Won   32160 - 33138    104
-v6 vs v7      Black Won   32160 - 33110    104
+
+depth = 2
+W vs B        Result      Nodes            Moves
+v6 vs v7.1    Black Won   32160 - 33110    104
 
 depth = 4
-W vs B        Result      Nodes            Moves
-v6 vs v6      Black Won   1181822 - 897951 392
-v6 vs v7      Draw DP     617934 - 545203  146
+W vs B        Result      Nodes             Moves
+v6 vs v7.1    Draw DP     617934 - 545152   146
+v6 vs v7.2    Black Won   744353 - 15545457 228
 
 
 W vs Stockfish    Result      Nodes     Moves

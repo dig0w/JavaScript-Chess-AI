@@ -166,9 +166,6 @@ export class AIV7 {
 
         this.nodes = 0;
         this.totalNodes = 0;
-
-        this.count = 0;
-        this.moveCount = 0;
     }
 
     async Play() {
@@ -183,63 +180,106 @@ export class AIV7 {
 
         this.nodes = 0;
 
-        const best = this.bestMove(this.depth);
+        const best = this.bestMove(this.depth, 5000);
             if (!best) return;
 
         this.totalNodes += this.nodes;
 
         console.log('Nodes searched:', this.nodes, 'Total nodes: ', this.totalNodes);
-        console.log('Count:', this.count);
-        console.log('Move Count:', this.moveCount);
         console.log('Move time:', new Date - startTime);
 
         this.engine.MovePiece(best.fr, best.fc, best.tr, best.tc, best.promote);
     }
 
-    bestMove(depth) {
-        // Generate moves
-        const moves = this.engine.getPlayerLegalMoves(this.engine.turn === 0);
-            if (moves.length === 0) return null;
-
-        const copy = this.engine.minimalClone();
-
-        // Order moves
-        moves.sort((a, b) => this.scoreMove(copy, b, depth) - this.scoreMove(copy, a, depth));
+    bestMove(maxDepth, timeLimitMs = null) {
+        const startTime = Date.now();
+        let deadline = timeLimitMs ? (startTime + timeLimitMs) : null;
 
         let bestMove = null;
+        let bestScore = -Infinity;
 
-        let alpha = -Infinity;
-        let beta = Infinity;
+        // persist copy across iterations? better to clone fresh each depth to avoid leftover state
+        for (let d = 1; d <= maxDepth; d++) {
+            // optional: stop if time exceeded
+            if (deadline && Date.now() > deadline) {
+                console.log(`Stopping ID at depth ${d-1} due to time limit`);
+                break;
+            }
 
-        for (let i = 0; i < moves.length; i++) {
-            const move = moves[i];
+            // Clone the engine for this iteration so minimax/Move/undo operate safely
+            const copy = this.engine.minimalClone();
 
-            copy.MovePiece(move.fr, move.fc, move.tr, move.tc, move.promote);
-            this.moveCount++;
+            // If TT contains a best move for root position, try to use it first by ordering moves.
+            // We'll still generate all moves, but we will place prevBestMove first to improve cutoffs.
+            const moves = copy.getPlayerLegalMoves(copy.turn === 0);
+            if (moves.length === 0) return null;
 
-            let score;
-            if (i === 0) {
-                // Full window search for first move
-                score = -this.minimax(copy, depth - 1, -beta, -alpha);
-            } else {
-                // PVS: narrow window first
-                score = -this.minimax(copy, depth - 1, -alpha - 1, -alpha);
-
-                // If it fails, research with full window
-                if (score > alpha) {
-                    score = -this.minimax(copy, depth - 1, -beta, -alpha);
+            // Use previous-best as heuristic: find and move it to front
+            if (bestMove) {
+                const idx = moves.findIndex(m => m.fr === bestMove.fr && m.fc === bestMove.fc &&
+                                                m.tr === bestMove.tr && m.tc === bestMove.tc &&
+                                                (m.promote || null) === (bestMove.promote || null));
+                if (idx > 0) {
+                    const b = moves.splice(idx, 1)[0];
+                    moves.unshift(b);
                 }
             }
 
-            copy.undoMove();
+            // Order moves (cheap ordering before real search)
+            moves.sort((a, b) => this.scoreMove(copy, b, d) - this.scoreMove(copy, a, d));
 
-            if (score > alpha) {
-                alpha = score;
-                bestMove = move;
+            let alpha = -Infinity;
+            let beta = Infinity;
+            let localBestMove = null;
+            let localBestScore = -Infinity;
+
+            // Principal Variation Search with first-move full-window and subsequent
+            for (let i = 0; i < moves.length; i++) {
+                const m = moves[i];
+
+                copy.MovePiece(m.fr, m.fc, m.tr, m.tc, m.promote);
+                this.moveCount++;
+
+                let score;
+                if (i === 0) {
+                    // full-window for the first move
+                    score = -this.minimax(copy, d - 1, -beta, -alpha);
+                } else {
+                    // narrow-window (PVS)
+                    score = -this.minimax(copy, d - 1, -alpha - 1, -alpha);
+                    if (score > alpha) {
+                        // research with full window
+                        score = -this.minimax(copy, d - 1, -beta, -alpha);
+                    }
+                }
+
+                copy.undoMove();
+
+                if (score > localBestScore) {
+                    localBestScore = score;
+                    localBestMove = m;
+                }
+
+                if (score > alpha) alpha = score;
+
+                // small optional early-stop if time exceeded between root moves
+                if (deadline && Date.now() > deadline) {
+                    console.log(`Time exceeded during root move loop at depth ${d}`);
+                    break;
+                }
+            }
+
+            // If we completed this depth (no timeout between root moves), accept its best move.
+            if (!deadline || Date.now() <= deadline) {
+                bestMove = localBestMove;
+                bestScore = localBestScore;
+            } else {
+                // time ran out: stop and return last completed bestMove
+                break;
             }
         }
 
-        console.log('Best move:', bestMove, alpha);
+        console.log('Best move:', bestMove, bestScore);
 
         return bestMove;
     }
@@ -255,7 +295,6 @@ export class AIV7 {
         if (this.TT.has(key)) {
             const entry = this.TT.get(key);
 
-            console.log('TT hit at depth:', depth);
             if (entry.depth >= depth) {
                 if (entry.flag === 'EXACT') return entry.value;
                 if (entry.flag === 'LOWERBOUND') alpha = Math.max(alpha, entry.value);
@@ -295,7 +334,6 @@ export class AIV7 {
             const isCapture = !engineState.isEmpty(targetBefore);
 
             engineState.MovePiece(move.fr, move.fc, move.tr, move.tc, move.promote);
-            this.moveCount++;
 
             const tactical = move.promote ? 900 : 0;
             const score = -this.minimax(engineState, depth - 1, -beta, -alpha) + tactical;
@@ -398,7 +436,6 @@ export class AIV7 {
 
         for (const move of moves) {
             engineState.MovePiece(move.fr, move.fc, move.tr, move.tc, move.promote);
-            this.moveCount++;
 
             const score = -this.quiescence(engineState, -beta, -alpha, qDepth + 1);
 
@@ -453,12 +490,16 @@ export class AIV7 {
 
                         mg += value * (this.pieceVal.Q.mg / 1.5);
                         eg += value * (this.pieceVal.Q.eg - 20);
+
+                        // if (rank == 6) eg += 50;
                     } else {
                         const rank = r;
                         const value = Math.pow(rank / (rows - 1), 5);
 
                         mg -= value * (this.pieceVal.Q.mg / 1.5);
                         eg -= value * (this.pieceVal.Q.eg - 20);
+
+                        // if (rank == 6) eg -= 50;
                     }
 
                     // Doubled pawns
@@ -503,8 +544,6 @@ export class AIV7 {
 
         // Discourage long games
         score -= engineState.totalPlies * 2;
-
-        this.count++;
 
         return engineState.turn === 0 ? score : -score;
     }

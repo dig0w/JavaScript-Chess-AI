@@ -1,5 +1,3 @@
-Transposition Table
-Iterative Deepening
 Null Move Pruning
 Late Move Reductions (LMR)
 penalize losing the ability to castle
