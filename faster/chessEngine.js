@@ -6,7 +6,7 @@ export class ChessEngine {
         ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
         ['.', '.', '.', '.', '.', '.', '.', '.'],
         ['.', '.', '.', '.', '.', '.', '.', '.'],
-        ['.', '.', '.', '.', '.', '.', '.', 'P'],
+        ['.', '.', '.', '.', '.', '.', '.', '.'],
         ['.', '.', '.', '.', '.', '.', '.', '.'],
         ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'],
         ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
@@ -78,7 +78,14 @@ export class ChessEngine {
         const isPawn = originalPiece.toLowerCase() === 'p';
 
         let movingPiece = originalPiece;
-            if (promotePiece && isPawn) movingPiece = isWhite ? promotePiece.toUpperCase() : promotePiece.toLowerCase();
+            if (promotePiece) {
+                if (isPawn) {
+                    promotePiece = isWhite ? promotePiece.toUpperCase() : promotePiece.toLowerCase()
+                    movingPiece = promotePiece;
+                } else {
+                    promotePiece = null;
+                }
+            };
         let targetPiece = this.getPiece(tr, tc);
 
         // Promote
@@ -89,16 +96,39 @@ export class ChessEngine {
             }
         }
 
+        // Castling
+        let castle = 0;
+        if (movingPiece.toLowerCase() === 'k' && Math.abs(tc - fc) === 2) {
+            if (tc === 6) { // King-side
+                this.pieces[this.getPiece(tr, 7)].setBit((this.rows - 1 - tr) * this.cols + 5);
+
+                this.pieces[this.getPiece(tr, 7)].clearBit((this.rows - 1 - tr) * this.cols + 7);
+
+                castle = 1;
+                if (this.renderer) {
+                    this.renderer.UpdateSquare(tr, 5);
+                    this.renderer.UpdateSquare(tr, 7);
+                }
+            } else if (tc === 2) { // Queen-side
+                this.pieces[this.getPiece(tr, 0)].setBit((this.rows - 1 - tr) * this.cols + 3);
+
+                this.pieces[this.getPiece(tr, 0)].clearBit((this.rows - 1 - tr) * this.cols + 0);
+                
+                castle = 2;
+                if (this.renderer) {
+                    this.renderer.UpdateSquare(tr, 3);
+                    this.renderer.UpdateSquare(tr, 0);
+                }
+            }
+        }
+
         // En-passant capture
         let isEnPassantCapture = false;
         if (isPawn && this.enPassantSquare && tr === this.enPassantSquare.r && tc === this.enPassantSquare.c && this.isEmpty(targetPiece)) {
             const capRow = this.isWhite(movingPiece) ? tr + 1 : tr - 1;
             targetPiece = this.getPiece(capRow, tc);
 
-            const eSquare = (this.rows - 1 - capRow) * this.cols + tc;
-
-            const bb = this.pieces[targetPiece];
-            bb.clearBit(eSquare);
+            this.pieces[targetPiece].clearBit((this.rows - 1 - capRow) * this.cols + tc);
 
             if (this.renderer) this.renderer.UpdateSquare(capRow, tc);
 
@@ -112,14 +142,10 @@ export class ChessEngine {
         const bb = this.pieces[movingPiece];
         bb.clearBit(fSquare);
 
-        if (promotePiece) {
-            this.pieces[originalPiece].clearBit(fSquare);
-        }
+        if (promotePiece) this.pieces[originalPiece].clearBit(fSquare);
 
         const isCapture = !this.isEmpty(targetPiece);
-        if (isCapture) {
-            this.pieces[targetPiece].clearBit(tSquare);
-        }
+        if (isCapture) this.pieces[targetPiece].clearBit(tSquare);
 
         bb.setBit(tSquare);
 
@@ -127,6 +153,28 @@ export class ChessEngine {
         this.occupiedBlack = this.pieces.p.or(this.pieces.n).or(this.pieces.b).or(this.pieces.r).or(this.pieces.q).or(this.pieces.k);
         this.occupied = this.occupiedWhite.or(this.occupiedBlack);
 
+        // Castle rights
+        const prevCastlingRights = {
+            whiteKingSide: this.castlingRights.whiteKingSide,
+            whiteQueenSide: this.castlingRights.whiteQueenSide,
+            blackKingSide: this.castlingRights.blackKingSide,
+            blackQueenSide: this.castlingRights.blackQueenSide
+        };
+        if (movingPiece.toLowerCase() === 'k') {
+            if (isWhite) {
+                this.castlingRights.whiteKingSide = false;
+                this.castlingRights.whiteQueenSide = false;
+            } else {
+                this.castlingRights.blackKingSide = false;
+                this.castlingRights.blackQueenSide = false;
+            }
+        }
+        if (movingPiece.toLowerCase() === 'r') {
+            if (fr === 7 && fc === 0) this.castlingRights.whiteQueenSide = false;
+            if (fr === 7 && fc === 7) this.castlingRights.whiteKingSide = false;
+            if (fr === 0 && fc === 0) this.castlingRights.blackQueenSide = false;
+            if (fr === 0 && fc === 7) this.castlingRights.blackKingSide = false;
+        }
 
         // En-passant rights
         const prevEnPassantSquare = this.enPassantSquare ? { r: this.enPassantSquare.r, c: this.enPassantSquare.c } : null;
@@ -140,7 +188,10 @@ export class ChessEngine {
             fr, fc, tr, tc,
             originalPiece,
             targetPiece,
+            promotePiece,
 
+            castle,
+            castlingRights: prevCastlingRights,
             isEnPassantCapture,
             enPassantSquare: prevEnPassantSquare,
 
@@ -168,7 +219,10 @@ export class ChessEngine {
             fr, fc, tr, tc,
             originalPiece,
             targetPiece,
+            promotePiece,
 
+            castle,
+            castlingRights,
             isEnPassantCapture,
             enPassantSquare,
 
@@ -179,19 +233,35 @@ export class ChessEngine {
         const isWhite = this.isWhite(originalPiece);
 
         // Restore piece positions
-        const fSquare = (this.rows - 1 - fr) * this.cols + fc;
         const tSquare = (this.rows - 1 - tr) * this.cols + tc;
 
         const fbb = this.pieces[originalPiece];
         fbb.clearBit(tSquare);
+        fbb.setBit((this.rows - 1 - fr) * this.cols + fc);
 
-        fbb.setBit(fSquare);
+        if (!this.isEmpty(targetPiece)) this.pieces[targetPiece].setBit(tSquare);
 
-        if (!this.isEmpty(targetPiece)) {
-            const tbb = this.pieces[targetPiece];
-            tbb.clearBit(fSquare);
+        if (promotePiece) this.pieces[promotePiece].clearBit(tSquare);
 
-            tbb.setBit(tSquare);
+        // Undo castling
+        if (castle === 1) { // King-side
+            this.pieces[this.getPiece(tr, 5)].setBit((this.rows - 1 - tr) * this.cols + 7);
+
+            this.pieces[this.getPiece(tr, 5)].clearBit((this.rows - 1 - tr) * this.cols + 5);
+
+            if (this.renderer) {
+                this.renderer.UpdateSquare(tr, 7);
+                this.renderer.UpdateSquare(tr, 5);
+            }
+        } else if (castle === 2) { // Queen-side
+            this.pieces[this.getPiece(tr, 3)].setBit((this.rows - 1 - tr) * this.cols + 0);
+
+            this.pieces[this.getPiece(tr, 3)].clearBit((this.rows - 1 - tr) * this.cols + 3);
+
+            if (this.renderer) {
+                this.renderer.UpdateSquare(tr, 0);
+                this.renderer.UpdateSquare(tr, 3);
+            }
         }
 
         // Undo En-passant capture
@@ -199,13 +269,9 @@ export class ChessEngine {
             const capRow = isWhite ? tr + 1 : tr - 1;
             const pawn = isWhite ? 'p' : 'P';
 
-            const eSquare = (this.rows - 1 - capRow) * this.cols + tc;
-            const ebb = this.pieces[pawn];
-            ebb.setBit(eSquare);
+            this.pieces[pawn].setBit((this.rows - 1 - capRow) * this.cols + tc);
 
-            const fSquare = (this.rows - 1 - tr) * this.cols + tc;
-            const fbb = this.pieces[pawn];
-            fbb.clearBit(fSquare);
+            this.pieces[pawn].clearBit((this.rows - 1 - tr) * this.cols + tc);
 
             if (this.renderer) this.renderer.UpdateSquare(capRow, tc);
         }
@@ -213,6 +279,12 @@ export class ChessEngine {
         this.occupiedWhite = this.pieces.P.or(this.pieces.N).or(this.pieces.B).or(this.pieces.R).or(this.pieces.Q).or(this.pieces.K);
         this.occupiedBlack = this.pieces.p.or(this.pieces.n).or(this.pieces.b).or(this.pieces.r).or(this.pieces.q).or(this.pieces.k);
         this.occupied = this.occupiedWhite.or(this.occupiedBlack);
+
+        // Restore castling rights
+        this.castlingRights.whiteKingSide = castlingRights.whiteKingSide;
+        this.castlingRights.whiteQueenSide = castlingRights.whiteQueenSide;
+        this.castlingRights.blackKingSide = castlingRights.blackKingSide;
+        this.castlingRights.blackQueenSide = castlingRights.blackQueenSide;
 
         // Restore En-passant square
         this.enPassantSquare = enPassantSquare ? { r: enPassantSquare.r, c: enPassantSquare.c } : null;
@@ -233,11 +305,11 @@ export class ChessEngine {
         const piece = this.getPiece(fr, fc);
             if (this.isEmpty(piece)) return false;
 
-        const white = this.isWhite(piece);
+        const isWhite = this.isWhite(piece);
         const targetPiece = this.getPiece(tr, tc);
 
         // Cannot capture your own piece
-        if (!this.isEmpty(targetPiece) && (white === this.isWhite(targetPiece))) return false;
+        if (!this.isEmpty(targetPiece) && (isWhite === this.isWhite(targetPiece))) return false;
 
         const dr = tr - fr;
         const dc = tc - fc;
@@ -250,8 +322,8 @@ export class ChessEngine {
         switch (piece.toLowerCase()) {
             // Pawn
             case 'p':
-                const direction = white ? -1 : 1;
-                const startRow = white ? 6 : 1;
+                const direction = isWhite ? -1 : 1;
+                const startRow = isWhite ? 6 : 1;
 
                 // Single push forward
                 if (dc === 0 && dr === direction && this.isEmpty(targetPiece)) isLegal = true;
@@ -264,67 +336,60 @@ export class ChessEngine {
 
                 if (Math.abs(dc) === 1 && dr === direction) {
                     // Diagonal capture
-                    if ((white && this.isBlack(targetPiece)) || (!white && this.isWhite(targetPiece))) isLegal = true;
+                    if ((isWhite && this.isBlack(targetPiece)) || (!isWhite && this.isWhite(targetPiece))) isLegal = true;
 
                     // En-passant capture
                     if (this.enPassantSquare && this.enPassantSquare.r === tr && this.enPassantSquare.c === tc && this.isEmpty(this.getPiece([tr][tc]))) isLegal = true;
                 }
-
                 break;
             // Rook
             case 'r':
-                if ((dr === 0 && dc === 0) && this.isPathClear(fr, fc, tr, tc)) isLegal = true;
-
+                if ((dr === 0 || dc === 0) && this.isPathClear(fr, fc, tr, tc)) isLegal = true;
                 break;
             // Bishop
             case 'b':
                 if (absR === absC && this.isPathClear(fr, fc, tr, tc)) isLegal = true;
-
                 break;
             // Queen
             case 'q':
                 if ((dr === 0 || dc === 0) && this.isPathClear(fr, fc, tr, tc)) isLegal = true;
-
                 if (absR === absC && this.isPathClear(fr, fc, tr, tc)) isLegal = true;
-
                 break;
             // Knight
             case 'n':
                 isLegal = (absR === 2 && absC === 1) || (absR === 1 && absC === 2);
-
                 break;
             // King
             case 'k':
-                if (absR <= 1 && absC <= 1) isLegal = true;;
+                if (absR <= 1 && absC <= 1) isLegal = true;
 
-                // const startRow = white ? 7 : 0;
-                // const kingSide = white ? this.castlingRights.whiteKingSide : this.castlingRights.blackKingSide;
-                // const queenSide = white ? this.castlingRights.whiteQueenSide : this.castlingRights.blackQueenSide;
+                const castleRow = isWhite ? 7 : 0;
+                const kingSide = isWhite ? this.castlingRights.whiteKingSide : this.castlingRights.blackKingSide;
+                const queenSide = isWhite ? this.castlingRights.whiteQueenSide : this.castlingRights.blackQueenSide;
 
-                // // Castling
-                // if (fr === startRow && fc === 4) {
-                //     // King-side
-                //     if (tr === startRow && tc === 6 &&
-                //         kingSide &&
-                //         this.isEmpty(this.board[startRow][5]) &&
-                //         this.isEmpty(this.board[startRow][6]) &&
-                //         !this.isSquareAttacked(startRow, 4, white) &&
-                //         !this.isSquareAttacked(startRow, 5, white) &&
-                //         !this.isSquareAttacked(startRow, 6, white)
-                //     ) isLegal = true;;
+                // Castling
+                if (fr === castleRow && fc === 4) {
+                    // King-side
+                    if (tr === castleRow && tc === 6 &&
+                        kingSide &&
+                        this.isEmpty(this.getPiece(castleRow, 5)) &&
+                        this.isEmpty(this.getPiece(castleRow, 6))
+                        // !this.isSquareAttacked(castleRow, 4, isWhite) &&
+                        // !this.isSquareAttacked(castleRow, 5, isWhite) &&
+                        // !this.isSquareAttacked(castleRow, 6, isWhite)
+                    ) isLegal = true;;
 
-                //     // Queen-side
-                //     if (tr === startRow && tc === 2 &&
-                //         queenSide &&
-                //         this.isEmpty(this.board[startRow][1]) &&
-                //         this.isEmpty(this.board[startRow][2]) &&
-                //         this.isEmpty(this.board[startRow][3]) &&
-                //         !this.isSquareAttacked(startRow, 4, white) &&
-                //         !this.isSquareAttacked(startRow, 3, white) &&
-                //         !this.isSquareAttacked(startRow, 2, white)
-                //     ) isLegal = true;;
-                // }
-
+                    // Queen-side
+                    if (tr === castleRow && tc === 2 &&
+                        queenSide &&
+                        this.isEmpty(this.getPiece(castleRow, 1)) &&
+                        this.isEmpty(this.getPiece(castleRow, 2)) &&
+                        this.isEmpty(this.getPiece(castleRow, 3))
+                        // !this.isSquareAttacked(castleRow, 4, isWhite) &&
+                        // !this.isSquareAttacked(castleRow, 3, isWhite) &&
+                        // !this.isSquareAttacked(castleRow, 2, isWhite)
+                    ) isLegal = true;;
+                }
                 break;
         }
 
@@ -381,11 +446,10 @@ export class ChessEngine {
         let c = fc + stepC;
 
         while (r !== tr || c !== tc) {
-            if (this.isBlocked(r, c)) return false;
+            if (!this.isEmpty(this.getPiece(r, c))) return false;
             r += stepR;
             c += stepC;
         }
-
         return true;
     }
 
@@ -399,12 +463,6 @@ export class ChessEngine {
         return '.';
     }
 
-    isBlocked(r, c) {
-        const sq = r*8 + c;
-
-        if (sq < 32) return (this.occupied.lo & (1 << sq)) !== 0;
-        return (this.occupied.hi & (1 << (sq-32))) !== 0;
-    }
     isWhite(p) { return p ? p !== '.' && p === p.toUpperCase() : null; }
     isBlack(p) { return p ? p !== '.' && p === p.toLowerCase() : null; }
     isEmpty(p) { return p ? p == '.' : null; }

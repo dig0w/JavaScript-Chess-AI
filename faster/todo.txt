@@ -1,3 +1,2 @@
-Castling
 End Conditions
   Draw Threefold Repetition (lighter way)
