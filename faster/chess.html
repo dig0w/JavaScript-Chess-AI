@@ -112,9 +112,8 @@
             copy.MovePiece(move.fr, move.fc, move.tr, move.tc, move.promote);
         }
 
+        const copy = chess.clone();
         for (let i = 0; i < epoch; i++) {
-            const copy = chess.clone();
-
             const startTime1 = performance.now();
 
             copy.MovePiece(move.fr, move.fc, move.tr, move.tc, move.promote);
