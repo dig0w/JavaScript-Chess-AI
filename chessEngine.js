@@ -94,162 +94,162 @@ export class ChessEngine {
             }
         }
 
-        this.zobristXorPiece(originalPiece, fr, fc);
+        // this.zobristXorPiece(originalPiece, fr, fc);
 
-        // Castling
-        let castle = 0;
-        if (movingPiece.toLowerCase() === 'k' && Math.abs(tc - fc) === 2) {
-            if (tc === 6) { // King-side
-                this.zobristXorPiece(this.board[tr][7], tr, 7);
+        // // Castling
+        // let castle = 0;
+        // if (movingPiece.toLowerCase() === 'k' && Math.abs(tc - fc) === 2) {
+        //     if (tc === 6) { // King-side
+        //         this.zobristXorPiece(this.board[tr][7], tr, 7);
 
-                this.board[tr][5] = this.board[tr][7];
-                this.board[tr][7] = '.';
+        //         this.board[tr][5] = this.board[tr][7];
+        //         this.board[tr][7] = '.';
 
-                this.zobristXorPiece(this.board[tr][5], tr, 5);
+        //         this.zobristXorPiece(this.board[tr][5], tr, 5);
 
-                if (this.renderer) {
-                    this.renderer.UpdateSquare(tr, 5);
-                    this.renderer.UpdateSquare(tr, 7);
-                }
+        //         if (this.renderer) {
+        //             this.renderer.UpdateSquare(tr, 5);
+        //             this.renderer.UpdateSquare(tr, 7);
+        //         }
 
-                castle = 1;
-            } else if (tc === 2) { // Queen-side
-                this.zobristXorPiece(this.board[tr][0], tr, 0);
+        //         castle = 1;
+        //     } else if (tc === 2) { // Queen-side
+        //         this.zobristXorPiece(this.board[tr][0], tr, 0);
 
-                this.board[tr][3] = this.board[tr][0];
-                this.board[tr][0] = '.';
+        //         this.board[tr][3] = this.board[tr][0];
+        //         this.board[tr][0] = '.';
 
-                this.zobristXorPiece(this.board[tr][3], tr, 3);
+        //         this.zobristXorPiece(this.board[tr][3], tr, 3);
 
-                if (this.renderer) {
-                    this.renderer.UpdateSquare(tr, 3);
-                    this.renderer.UpdateSquare(tr, 0);
-                }
+        //         if (this.renderer) {
+        //             this.renderer.UpdateSquare(tr, 3);
+        //             this.renderer.UpdateSquare(tr, 0);
+        //         }
 
-                castle = 2;
-            }
-        }
+        //         castle = 2;
+        //     }
+        // }
 
-        // En-passant capture
-        let isEnPassantCapture = false;
-        if (movingPiece.toLowerCase() === 'p' && this.enPassantSquare && tr === this.enPassantSquare.r && tc === this.enPassantSquare.c && this.isEmpty(targetPiece)) {
-            const capRow = this.isWhite(movingPiece) ? tr + 1 : tr - 1;
-            targetPiece = this.board[capRow][tc];
-            this.board[capRow][tc] = '.';
+        // // En-passant capture
+        // let isEnPassantCapture = false;
+        // if (movingPiece.toLowerCase() === 'p' && this.enPassantSquare && tr === this.enPassantSquare.r && tc === this.enPassantSquare.c && this.isEmpty(targetPiece)) {
+        //     const capRow = this.isWhite(movingPiece) ? tr + 1 : tr - 1;
+        //     targetPiece = this.board[capRow][tc];
+        //     this.board[capRow][tc] = '.';
 
-            this.zobristXorPiece(targetPiece, capRow, tc);
+        //     this.zobristXorPiece(targetPiece, capRow, tc);
 
-            if (this.renderer) this.renderer.UpdateSquare(capRow, tc);
+        //     if (this.renderer) this.renderer.UpdateSquare(capRow, tc);
 
-            isEnPassantCapture = true;
-        }
+        //     isEnPassantCapture = true;
+        // }
         
         // Move piece
         this.board[tr][tc] = movingPiece;
         this.board[fr][fc] = '.';
 
-        this.zobristXorPiece(movingPiece, tr, tc);
+        // this.zobristXorPiece(movingPiece, tr, tc);
 
-        const isCapture = !this.isEmpty(targetPiece) && this.isWhite(movingPiece) !== this.isWhite(targetPiece);
-        if (this.renderer) {
-            // Capture
-            if (isCapture || isEnPassantCapture) {
-                if (this.isWhite(movingPiece)) {
-                    this.whiteCaptures.push(targetPiece);
-                } else {
-                    this.blackCaptures.push(targetPiece);
-                }
-            }
+        // const isCapture = !this.isEmpty(targetPiece) && this.isWhite(movingPiece) !== this.isWhite(targetPiece);
+        // if (this.renderer) {
+        //     // Capture
+        //     if (isCapture || isEnPassantCapture) {
+        //         if (this.isWhite(movingPiece)) {
+        //             this.whiteCaptures.push(targetPiece);
+        //         } else {
+        //             this.blackCaptures.push(targetPiece);
+        //         }
+        //     }
 
-            // King check
-            this.whiteKingChecked = this.isKingInCheck(true);
-            this.blackKingChecked = this.isKingInCheck(false);
+        //     // King check
+        //     this.whiteKingChecked = this.isKingInCheck(true);
+        //     this.blackKingChecked = this.isKingInCheck(false);
 
-            // Piece points
-            this.whitePoints = 0;
-            this.blackPoints = 0;
-            for (const [key, value] of Object.entries(this.piecePoints)) {
-                this.whitePoints += this.getPieces(key.toLocaleUpperCase()).length * value;
-                this.blackPoints += this.getPieces(key.toLocaleLowerCase()).length * value;
-            }
-        }
+        //     // Piece points
+        //     this.whitePoints = 0;
+        //     this.blackPoints = 0;
+        //     for (const [key, value] of Object.entries(this.piecePoints)) {
+        //         this.whitePoints += this.getPieces(key.toLocaleUpperCase()).length * value;
+        //         this.blackPoints += this.getPieces(key.toLocaleLowerCase()).length * value;
+        //     }
+        // }
 
-        if (isCapture) {
-            this.zobristXorPiece(targetPiece, tr, tc);
-        }
+        // if (isCapture) {
+        //     this.zobristXorPiece(targetPiece, tr, tc);
+        // }
 
-        // Draw rules
-        if (movingPiece.toLowerCase() == 'p' || isCapture || isEnPassantCapture) this.halfmoveClock = 0;
-        else this.halfmoveClock++;
+        // // Draw rules
+        // if (movingPiece.toLowerCase() == 'p' || isCapture || isEnPassantCapture) this.halfmoveClock = 0;
+        // else this.halfmoveClock++;
 
-        this.positionHistory.push(this.getPositionKey());
+        // this.positionHistory.push(this.getPositionKey());
 
-        // Castle rights
-        const prevCastlingRights = {
-            whiteKingSide: this.castlingRights.whiteKingSide,
-            whiteQueenSide: this.castlingRights.whiteQueenSide,
-            blackKingSide: this.castlingRights.blackKingSide,
-            blackQueenSide: this.castlingRights.blackQueenSide
-        };
+        // // Castle rights
+        // const prevCastlingRights = {
+        //     whiteKingSide: this.castlingRights.whiteKingSide,
+        //     whiteQueenSide: this.castlingRights.whiteQueenSide,
+        //     blackKingSide: this.castlingRights.blackKingSide,
+        //     blackQueenSide: this.castlingRights.blackQueenSide
+        // };
 
-        if (movingPiece.toLowerCase() === 'k') {
-            if (this.isWhite(movingPiece)) {
-                this.castlingRights.whiteKingSide = false;
-                this.castlingRights.whiteQueenSide = false;
-            } else {
-                this.castlingRights.blackKingSide = false;
-                this.castlingRights.blackQueenSide = false;
-            }
-        }
-        if (movingPiece.toLowerCase() === 'r') {
-            if (fr === 7 && fc === 0) this.castlingRights.whiteQueenSide = false;
-            if (fr === 7 && fc === 7) this.castlingRights.whiteKingSide = false;
-            if (fr === 0 && fc === 0) this.castlingRights.blackQueenSide = false;
-            if (fr === 0 && fc === 7) this.castlingRights.blackKingSide = false;
-        }
+        // if (movingPiece.toLowerCase() === 'k') {
+        //     if (this.isWhite(movingPiece)) {
+        //         this.castlingRights.whiteKingSide = false;
+        //         this.castlingRights.whiteQueenSide = false;
+        //     } else {
+        //         this.castlingRights.blackKingSide = false;
+        //         this.castlingRights.blackQueenSide = false;
+        //     }
+        // }
+        // if (movingPiece.toLowerCase() === 'r') {
+        //     if (fr === 7 && fc === 0) this.castlingRights.whiteQueenSide = false;
+        //     if (fr === 7 && fc === 7) this.castlingRights.whiteKingSide = false;
+        //     if (fr === 0 && fc === 0) this.castlingRights.blackQueenSide = false;
+        //     if (fr === 0 && fc === 7) this.castlingRights.blackKingSide = false;
+        // }
 
-        // En-passant rights
-        const prevEnPassantSquare = this.enPassantSquare ? { r: this.enPassantSquare.r, c: this.enPassantSquare.c } : null;
-        this.enPassantSquare = null;
-        if (movingPiece.toLowerCase() === 'p' && Math.abs(fr - tr) === 2) {
-            const epRow = (fr + tr) / 2;
-            this.enPassantSquare = { r: epRow, c: fc };
-        }
+        // // En-passant rights
+        // const prevEnPassantSquare = this.enPassantSquare ? { r: this.enPassantSquare.r, c: this.enPassantSquare.c } : null;
+        // this.enPassantSquare = null;
+        // if (movingPiece.toLowerCase() === 'p' && Math.abs(fr - tr) === 2) {
+        //     const epRow = (fr + tr) / 2;
+        //     this.enPassantSquare = { r: epRow, c: fc };
+        // }
 
-        this.zobristXorEP();
-        this.zobristXorCastleRights();
+        // this.zobristXorEP();
+        // this.zobristXorCastleRights();
 
-        this.hash ^= this.zobrist.side;
+        // this.hash ^= this.zobrist.side;
 
-        // Store move
-        this.logs.push({
-            fr, fc, tr, tc,
-            originalPiece,
-            movingPiece,
-            targetPiece,
-            promotePiece,
+        // // Store move
+        // this.logs.push({
+        //     fr, fc, tr, tc,
+        //     originalPiece,
+        //     movingPiece,
+        //     targetPiece,
+        //     promotePiece,
 
-            castle,
-            isEnPassantCapture,
-            enPassantCaptureRow: isEnPassantCapture ? (this.isWhite(movingPiece) ? tr + 1 : tr - 1) : null,
-            enPassantSquare: prevEnPassantSquare,
-            castlingRights: prevCastlingRights,
+        //     castle,
+        //     isEnPassantCapture,
+        //     enPassantCaptureRow: isEnPassantCapture ? (this.isWhite(movingPiece) ? tr + 1 : tr - 1) : null,
+        //     enPassantSquare: prevEnPassantSquare,
+        //     castlingRights: prevCastlingRights,
             
-            halfmoveClock: this.halfmoveClock,
+        //     halfmoveClock: this.halfmoveClock,
 
-            whiteKingChecked: this.whiteKingChecked,
-            blackKingChecked: this.blackKingChecked,
-            whiteCapturesLength: this.whiteCaptures.length,
-            blackCapturesLength: this.blackCaptures.length,
+        //     whiteKingChecked: this.whiteKingChecked,
+        //     blackKingChecked: this.blackKingChecked,
+        //     whiteCapturesLength: this.whiteCaptures.length,
+        //     blackCapturesLength: this.blackCaptures.length,
 
-            gameCondition: this.gameCondition,
-            turn: this.turn
-        });
-        this.totalPlies++;
+        //     gameCondition: this.gameCondition,
+        //     turn: this.turn
+        // });
+        // this.totalPlies++;
 
-        // Game condition
-        const result = this.evaluateEndConditions();
-            if (result) this.gameCondition = result;
+        // // Game condition
+        // const result = this.evaluateEndConditions();
+        //     if (result) this.gameCondition = result;
 
         // Switch turn
         if (this.gameCondition == 'PLAYING') this.SwitchTurn();
