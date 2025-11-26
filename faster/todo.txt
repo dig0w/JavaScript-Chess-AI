@@ -1,0 +1,4 @@
+Castling
+En Passant
+End Conditions
+  Draw Threefold Repetition (lighter way)
