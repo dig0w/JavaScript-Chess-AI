@@ -1,2 +1,5 @@
 End Conditions
   Draw Threefold Repetition (lighter way)
+
+
+isPathClear should use the occupied bb
