@@ -446,7 +446,7 @@ export class ChessEngine {
         let c = fc + stepC;
 
         while (r !== tr || c !== tc) {
-            if (!this.isEmpty(this.getPiece(r, c))) return false;
+            if (this.occupied.has((this.rows - 1 - r) * this.cols + c;)) return false;
             r += stepR;
             c += stepC;
         }
