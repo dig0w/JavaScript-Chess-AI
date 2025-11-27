@@ -1,5 +1,6 @@
 End Conditions
-  Draw Threefold Repetition (lighter way)
+    Checkmate
+    Stalemate
 
 
 Precomputed move masks (knight, king, sliding rays)

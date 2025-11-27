@@ -109,7 +109,63 @@ export class ChessRender {
     }
 
     UpdateGame() {
+        // Turn
         this.turnDisplay.textContent = this.engine.turn == 0 ? 'White' : 'Black';
+
+        // Checks
+        document.querySelectorAll('.checked').forEach(sq => sq.classList.remove('checked'));
+
+        if (this.engine.isKingInCheck(true)) {
+            const { r, c } = this.engine.getKing(true);
+
+            const sq = document.querySelector(`.square[data-row="${r}"][data-col="${c}"]`);
+            if (sq) sq.classList.add('checked');
+        }
+        if (this.engine.isKingInCheck(false)) {
+            const { r, c } = this.engine.getKing(false);
+
+            const sq = document.querySelector(`.square[data-row="${r}"][data-col="${c}"]`);
+            if (sq) sq.classList.add('checked');
+        }
+
+        // Highlight last move
+        document.querySelectorAll('.selected').forEach(sq => sq.classList.remove('selected'));
+        document.querySelectorAll('.light-selected').forEach(sq => sq.classList.remove('light-selected'));
+        if (this.engine.logs.length > 0) {
+            const lastMove = this.engine.logs[this.engine.logs.length - 1];
+
+            const fsq = this.boardEl.querySelector(`.square[data-row="${lastMove.fr}"][data-col="${lastMove.fc}"]`);
+                if (!fsq) return;
+            const tsq = this.boardEl.querySelector(`.square[data-row="${lastMove.tr}"][data-col="${lastMove.tc}"]`);
+                if (!tsq) return;
+            
+            fsq.classList.add('light-selected');
+            tsq.classList.add('selected');
+        }
+
+        // End Game
+        if (this.engine.gameCondition.startsWith('WHITE_WINS')) {
+            this.endScreen.classList.remove('hidden');
+
+            this.endScreen.classList.add('won');
+
+            this.endScreen.children[0].children[0].children[0].textContent = 'White Won!';
+            this.endScreen.children[0].children[0].children[1].textContent = 'by ' + this.engine.gameCondition.split('_').slice(2).join(' ').toLowerCase();
+        } else if (this.engine.gameCondition.startsWith('BLACK_WINS')) {
+            this.endScreen.classList.remove('hidden');
+
+            this.endScreen.classList.add('won');
+
+            this.endScreen.children[0].children[0].children[0].textContent = 'Black Won!';
+            this.endScreen.children[0].children[0].children[1].textContent = 'by ' + this.engine.gameCondition.split('_').slice(2).join(' ').toLowerCase();
+        } else if (this.engine.gameCondition.startsWith('DRAW')) {
+            this.endScreen.classList.remove('hidden');
+
+            this.endScreen.classList.add('draw');
+
+            this.endScreen.children[0].children[0].children[0].textContent = 'Draw!';
+            this.endScreen.children[0].children[0].children[1].textContent = 'by ' + this.engine.gameCondition.split('_').slice(1).join(' ').toLowerCase();
+        }
     }
 
     onSquareClick(e) {
@@ -184,7 +240,6 @@ export class ChessRender {
 
         this.highlightMoves(row, col);
     }
-
     onSquareBlur(e) {
         this.blurredTime = new Date();
     }
@@ -192,15 +247,18 @@ export class ChessRender {
     highlightMoves(row, col) {
         this.desHighlightMoves();
 
+        const startTime = performance.now();
+
         const moves = this.engine.getLegalMoves(row, col);
 
-        
+        const finalTime = performance.now() - startTime;
+        console.log('getLegalMoves:', finalTime);
+
         moves.forEach(([row, col, promote]) => {
             const sq = document.querySelector(`.square[data-row="${row}"][data-col="${col}"]`);
             if (sq) sq.classList.add('highlight');
         });
     }
-
     desHighlightMoves() {
         document.querySelectorAll('.highlight').forEach(sq => sq.classList.remove('highlight'));
     }
