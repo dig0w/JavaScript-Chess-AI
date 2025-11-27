@@ -91,6 +91,8 @@
         render.BeginPlay();
 
         document.getElementById('undo-btn').addEventListener('click', () => {
+            console.log('Undo move')
+
             chess.undoMove();
         });
 
@@ -106,13 +108,8 @@
             "promote": null
         };
 
-        // Warm-up JIT
-        for (let i = 0; i < 200; i++) {
-            const copy = chess.clone();
-            copy.MovePiece(move.fr, move.fc, move.tr, move.tc, move.promote);
-        }
-
         const copy = chess.clone();
+
         for (let i = 0; i < epoch; i++) {
             const startTime1 = performance.now();
 

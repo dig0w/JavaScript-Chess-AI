@@ -1,15 +1,16 @@
-import { BitBoard } from "./BitBoard.js";
+import { BitBoard } from './BitBoard.js';
+import { Zobrist } from './Zobrist.js';
 
 export class ChessEngine {
     constructor(board = [
-        ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
-        ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
+        ['r', '.', '.', '.', 'k', '.', '.', 'r'],
+        ['p', 'p', 'p', 'p', 'p', 'p', 'P', 'p'],
         ['.', '.', '.', '.', '.', '.', '.', '.'],
-        ['.', '.', '.', '.', '.', '.', '.', '.'],
-        ['.', '.', '.', '.', '.', '.', '.', '.'],
+        ['.', '.', 'b', '.', '.', '.', '.', '.'],
+        ['.', '.', '.', 'P', '.', 'p', '.', '.'],
         ['.', '.', '.', '.', '.', '.', '.', '.'],
         ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'],
-        ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
+        ['R', '.', '.', '.', 'K', '.', '.', 'R']
     ]) {
         this.rows = 8;
         this.cols = 8;
@@ -62,9 +63,12 @@ export class ChessEngine {
 
         this.promoPieces = ['q', 'r', 'b', 'n'];
 
+        this.zobrist = new Zobrist();
+        this.history = [];
+
         this.gameCondition = 'PLAYING';
         this.logs = [];
-
+0
 
         this.renderer = null;
     }
@@ -88,6 +92,9 @@ export class ChessEngine {
             };
         let targetPiece = this.getPiece(tr, tc);
 
+        const fSquare = this.toSq(fr, fc);
+        const tSquare = this.toSq(tr, tc);
+
         // Promote
         if (this.renderer && isPawn && !promotePiece) {
             if ((isWhite && tr === 0) || (!isWhite && tr === this.rows - 1)) {
@@ -96,64 +103,71 @@ export class ChessEngine {
             }
         }
 
+        this.zobrist.xorPiece(originalPiece, fr, fc);
+
+        const isCapture = !this.isEmpty(targetPiece);
+        if (isCapture) {
+            this.zobrist.xorPiece(targetPiece, tr, tc);
+            this.pieces[targetPiece].clearBit(tSquare);
+        }
+
+        // Reset En-passsant rights
+        if (this.enPassantSquare) this.zobrist.xorEP(this.enPassantSquare.c);
+        const prevEnPassant = this.enPassantSquare ? { r: this.enPassantSquare.r, c: this.enPassantSquare.c } : null;
+        this.enPassantSquare = null;
+
+        // En-passant capture
+        let isEnPassantCapture = false;
+        if (isPawn && prevEnPassant && tr === prevEnPassant.r && tc === prevEnPassant.c && !isCapture) {
+            const capRow = isWhite ? tr + 1 : tr - 1;
+            targetPiece = this.getPiece(capRow, tc);
+
+            this.zobrist.xorPiece(targetPiece, capRow, tc);
+            this.pieces[targetPiece].clearBit(this.toSq(capRow, tc));
+            
+            isEnPassantCapture = true;
+        }
+
         // Castling
         let castle = 0;
         if (movingPiece.toLowerCase() === 'k' && Math.abs(tc - fc) === 2) {
             if (tc === 6) { // King-side
-                this.pieces[this.getPiece(tr, 7)].setBit((this.rows - 1 - tr) * this.cols + 5);
+                const rPiece = this.getPiece(tr, 7);
 
-                this.pieces[this.getPiece(tr, 7)].clearBit((this.rows - 1 - tr) * this.cols + 7);
+                this.zobrist.xorPiece(rPiece, tr, 7);
+
+                this.pieces[rPiece].clearBit(this.toSq(tr, 7));
+                this.pieces[rPiece].setBit(this.toSq(tr, 5));
+
+                this.zobrist.xorPiece(rPiece, tr, 5);
 
                 castle = 1;
-                if (this.renderer) {
-                    this.renderer.UpdateSquare(tr, 5);
-                    this.renderer.UpdateSquare(tr, 7);
-                }
             } else if (tc === 2) { // Queen-side
-                this.pieces[this.getPiece(tr, 0)].setBit((this.rows - 1 - tr) * this.cols + 3);
+                const rPiece = this.getPiece(tr, 0);
 
-                this.pieces[this.getPiece(tr, 0)].clearBit((this.rows - 1 - tr) * this.cols + 0);
+                this.zobrist.xorPiece(rPiece, tr, 0);
+
+                this.pieces[rPiece].setBit(this.toSq(tr, 3));
+                this.pieces[rPiece].clearBit(this.toSq(tr, 0));
                 
+                this.zobrist.xorPiece(rPiece, tr, 3);
+
                 castle = 2;
-                if (this.renderer) {
-                    this.renderer.UpdateSquare(tr, 3);
-                    this.renderer.UpdateSquare(tr, 0);
-                }
             }
         }
 
-        // En-passant capture
-        let isEnPassantCapture = false;
-        if (isPawn && this.enPassantSquare && tr === this.enPassantSquare.r && tc === this.enPassantSquare.c && this.isEmpty(targetPiece)) {
-            const capRow = this.isWhite(movingPiece) ? tr + 1 : tr - 1;
-            targetPiece = this.getPiece(capRow, tc);
-
-            this.pieces[targetPiece].clearBit((this.rows - 1 - capRow) * this.cols + tc);
-
-            if (this.renderer) this.renderer.UpdateSquare(capRow, tc);
-
-            isEnPassantCapture = true;
-        }
-
         // Move piece
-        const fSquare = (this.rows - 1 - fr) * this.cols + fc;
-        const tSquare = (this.rows - 1 - tr) * this.cols + tc;
+        this.pieces[originalPiece].clearBit(fSquare);
+        this.pieces[movingPiece].setBit(tSquare);
 
-        const bb = this.pieces[movingPiece];
-        bb.clearBit(fSquare);
-
-        if (promotePiece) this.pieces[originalPiece].clearBit(fSquare);
-
-        const isCapture = !this.isEmpty(targetPiece);
-        if (isCapture) this.pieces[targetPiece].clearBit(tSquare);
-
-        bb.setBit(tSquare);
+        this.zobrist.xorPiece(movingPiece, tr, tc);
 
         this.occupiedWhite = this.pieces.P.or(this.pieces.N).or(this.pieces.B).or(this.pieces.R).or(this.pieces.Q).or(this.pieces.K);
         this.occupiedBlack = this.pieces.p.or(this.pieces.n).or(this.pieces.b).or(this.pieces.r).or(this.pieces.q).or(this.pieces.k);
         this.occupied = this.occupiedWhite.or(this.occupiedBlack);
 
         // Castle rights
+        this.zobrist.xorCastleRights(this.castlingRights);
         const prevCastlingRights = {
             whiteKingSide: this.castlingRights.whiteKingSide,
             whiteQueenSide: this.castlingRights.whiteQueenSide,
@@ -175,13 +189,16 @@ export class ChessEngine {
             if (fr === 0 && fc === 0) this.castlingRights.blackQueenSide = false;
             if (fr === 0 && fc === 7) this.castlingRights.blackKingSide = false;
         }
+        this.zobrist.xorCastleRights(this.castlingRights);
 
         // En-passant rights
-        const prevEnPassantSquare = this.enPassantSquare ? { r: this.enPassantSquare.r, c: this.enPassantSquare.c } : null;
-        this.enPassantSquare = null;
         if (isPawn && Math.abs(fr - tr) === 2) {
             this.enPassantSquare = { r: (fr + tr) / 2, c: fc };
+            this.zobrist.xorEP(fc);
         }
+
+        this.zobrist.xorTurn();
+        this.history.push(this.zobrist.hash);
 
         // Store move
         this.logs.push({
@@ -193,7 +210,7 @@ export class ChessEngine {
             castle,
             castlingRights: prevCastlingRights,
             isEnPassantCapture,
-            enPassantSquare: prevEnPassantSquare,
+            enPassantSquare: prevEnPassant,
 
             gameCondition: this.gameCondition,
             turn: this.turn
@@ -207,6 +224,19 @@ export class ChessEngine {
             this.renderer.UpdateSquare(fr, fc);
             this.renderer.UpdateSquare(tr, tc);
             this.renderer.UpdateGame();
+
+            if (isEnPassantCapture) {
+                const capRow = isWhite ? tr + 1 : tr - 1;
+                this.renderer.UpdateSquare(capRow, tc);
+            }
+
+            if (castle == 1) {
+                this.renderer.UpdateSquare(tr, 7);
+                this.renderer.UpdateSquare(tr, 5);
+            } else if (castle == 2) {
+                this.renderer.UpdateSquare(tr, 3);
+                this.renderer.UpdateSquare(tr, 0);
+            }
         }
     }
 
@@ -232,36 +262,47 @@ export class ChessEngine {
 
         const isWhite = this.isWhite(originalPiece);
 
+        this.zobrist.xorTurn();
+
         // Restore piece positions
-        const tSquare = (this.rows - 1 - tr) * this.cols + tc;
+        const tSquare = this.toSq(tr, tc);
 
         const fbb = this.pieces[originalPiece];
-        fbb.clearBit(tSquare);
-        fbb.setBit((this.rows - 1 - fr) * this.cols + fc);
+        if (promotePiece) {
+            this.zobrist.xorPiece(promotePiece, tr, tc);
+            this.pieces[promotePiece].clearBit(tSquare);
+        } else {
+            fbb.clearBit(tSquare);
+            this.zobrist.xorPiece(originalPiece, tr, tc);
+        }
 
-        if (!this.isEmpty(targetPiece)) this.pieces[targetPiece].setBit(tSquare);
+        fbb.setBit(this.toSq(fr, fc));
+        this.zobrist.xorPiece(originalPiece, fr, fc);
 
-        if (promotePiece) this.pieces[promotePiece].clearBit(tSquare);
+        if (!this.isEmpty(targetPiece) && !isEnPassantCapture) {
+            this.zobrist.xorPiece(targetPiece, tr, tc);
+            this.pieces[targetPiece].setBit(tSquare)
+        };
 
         // Undo castling
         if (castle === 1) { // King-side
-            this.pieces[this.getPiece(tr, 5)].setBit((this.rows - 1 - tr) * this.cols + 7);
+            const rPiece = this.getPiece(tr, 5);
 
-            this.pieces[this.getPiece(tr, 5)].clearBit((this.rows - 1 - tr) * this.cols + 5);
+            this.zobrist.xorPiece(rPiece, tr, 5);
 
-            if (this.renderer) {
-                this.renderer.UpdateSquare(tr, 7);
-                this.renderer.UpdateSquare(tr, 5);
-            }
+            this.pieces[rPiece].setBit(this.toSq(tr, 7));
+            this.pieces[rPiece].clearBit(this.toSq(tr, 5));
+
+            this.zobrist.xorPiece(rPiece, tr, 7);
         } else if (castle === 2) { // Queen-side
-            this.pieces[this.getPiece(tr, 3)].setBit((this.rows - 1 - tr) * this.cols + 0);
+            const rPiece = this.getPiece(tr, 3);
 
-            this.pieces[this.getPiece(tr, 3)].clearBit((this.rows - 1 - tr) * this.cols + 3);
+            this.zobrist.xorPiece(rPiece, tr, 3);
 
-            if (this.renderer) {
-                this.renderer.UpdateSquare(tr, 0);
-                this.renderer.UpdateSquare(tr, 3);
-            }
+            this.pieces[rPiece].setBit(this.toSq(tr, 0));
+            this.pieces[rPiece].clearBit(this.toSq(tr, 3));
+
+            this.zobrist.xorPiece(rPiece, tr, 0);
         }
 
         // Undo En-passant capture
@@ -269,11 +310,9 @@ export class ChessEngine {
             const capRow = isWhite ? tr + 1 : tr - 1;
             const pawn = isWhite ? 'p' : 'P';
 
-            this.pieces[pawn].setBit((this.rows - 1 - capRow) * this.cols + tc);
-
-            this.pieces[pawn].clearBit((this.rows - 1 - tr) * this.cols + tc);
-
-            if (this.renderer) this.renderer.UpdateSquare(capRow, tc);
+            this.zobrist.xorPiece(targetPiece, capRow, tc);
+            this.pieces[pawn].setBit(this.toSq(capRow, tc));
+            this.pieces[pawn].clearBit(tSquare);
         }
 
         this.occupiedWhite = this.pieces.P.or(this.pieces.N).or(this.pieces.B).or(this.pieces.R).or(this.pieces.Q).or(this.pieces.K);
@@ -281,13 +320,20 @@ export class ChessEngine {
         this.occupied = this.occupiedWhite.or(this.occupiedBlack);
 
         // Restore castling rights
+        this.zobrist.xorCastleRights(this.castlingRights);
         this.castlingRights.whiteKingSide = castlingRights.whiteKingSide;
         this.castlingRights.whiteQueenSide = castlingRights.whiteQueenSide;
         this.castlingRights.blackKingSide = castlingRights.blackKingSide;
         this.castlingRights.blackQueenSide = castlingRights.blackQueenSide;
+        this.zobrist.xorCastleRights(castlingRights);
 
         // Restore En-passant square
-        this.enPassantSquare = enPassantSquare ? { r: enPassantSquare.r, c: enPassantSquare.c } : null;
+        if (this.enPassantSquare) this.zobrist.xorEP(this.enPassantSquare.c);
+        this.enPassantSquare = null;
+        if (enPassantSquare) {
+            this.enPassantSquare = { r: enPassantSquare.r, c: enPassantSquare.c };
+            this.zobrist.xorEP(enPassantSquare.c);
+        }
 
         // Restore game condition and turn
         this.gameCondition = gameCondition;
@@ -298,6 +344,19 @@ export class ChessEngine {
             this.renderer.UpdateSquare(fr, fc);
             this.renderer.UpdateSquare(tr, tc);
             this.renderer.UpdateGame();
+
+            if (castle == 1) {
+                this.renderer.UpdateSquare(tr, 7);
+                this.renderer.UpdateSquare(tr, 5);
+            } else if (castle == 2) {
+                this.renderer.UpdateSquare(tr, 3);
+                this.renderer.UpdateSquare(tr, 0);
+            }
+
+            if (isEnPassantCapture) {
+                const capRow = isWhite ? tr + 1 : tr - 1;
+                this.renderer.UpdateSquare(capRow, tc);
+            }
         }
     }
 
@@ -446,7 +505,7 @@ export class ChessEngine {
         let c = fc + stepC;
 
         while (r !== tr || c !== tc) {
-            if (this.occupied.has((this.rows - 1 - r) * this.cols + c;)) return false;
+            if (this.occupied.has((this.rows - 1 - r) * this.cols + c)) return false;
             r += stepR;
             c += stepC;
         }
@@ -454,13 +513,34 @@ export class ChessEngine {
     }
 
     getPiece(r, c) {
-        const sq = (7 - r) * 8 + c;
+        const sq = this.toSq(r, c);
 
-        for (const [piece, bb] of Object.entries(this.pieces)) {
-            if (bb.has(sq)) return piece;
+        // Fast exit
+        if (!this.occupied.has(sq)) return '.';
+
+        const isWhite = this.occupiedWhite.has(sq);
+
+        if (isWhite) {
+            if (this.pieces.P.has(sq)) return 'P';
+            if (this.pieces.N.has(sq)) return 'N';
+            if (this.pieces.B.has(sq)) return 'B';
+            if (this.pieces.R.has(sq)) return 'R';
+            if (this.pieces.Q.has(sq)) return 'Q';
+            if (this.pieces.K.has(sq)) return 'K';
+        } else {
+            if (this.pieces.p.has(sq)) return 'p';
+            if (this.pieces.n.has(sq)) return 'n';
+            if (this.pieces.b.has(sq)) return 'b';
+            if (this.pieces.r.has(sq)) return 'r';
+            if (this.pieces.q.has(sq)) return 'q';
+            if (this.pieces.k.has(sq)) return 'k';
         }
 
         return '.';
+    }
+
+    toSq(r, c) {
+        return (this.rows - 1 - r) * this.cols + c;
     }
 
     isWhite(p) { return p ? p !== '.' && p === p.toUpperCase() : null; }
@@ -471,7 +551,10 @@ export class ChessEngine {
         const clone = new ChessEngine();
 
         // Deep copy all piece bitboards
-        clone.pieces = {...this.pieces};
+        clone.pieces = {};
+        for (const [piece, bb] of Object.entries(this.pieces)) {
+            clone.pieces[piece] = bb.clone();
+        }
 
         clone.occupiedWhite = this.occupiedWhite.clone();
         clone.occupiedBlack = this.occupiedBlack.clone();

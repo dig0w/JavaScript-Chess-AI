@@ -2,4 +2,4 @@ End Conditions
   Draw Threefold Repetition (lighter way)
 
 
-isPathClear should use the occupied bb
+Precomputed move masks (knight, king, sliding rays)

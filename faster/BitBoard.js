@@ -5,11 +5,11 @@ export class BitBoard {
         this.lo = lo >>> 0;
     }
 
-    // --- core operations ---
     clone() {
         return new BitBoard(this.hi, this.lo);
     }
-
+    
+    // --- core operations ---
     clearBit(sq) {
         if (sq < 32) this.lo &= ~(1 << sq);
         else         this.hi &= ~(1 << (sq-32));
