@@ -2,13 +2,13 @@ import { BitBoard } from './BitBoard.js';
 import { Zobrist } from './Zobrist.js';
 
 export class ChessEngine {
-    static pawnAttacksWhite = Array(64);
-    static pawnAttacksBlack = Array(64);
-    static knightAttacks = Array(64);
+    static pawnMovesWhite = Array(64);
+    static pawnMovesBlack = Array(64);
+    static knightMoves = Array(64);
     static rookRays = Array(64);
     static bishopRays = Array(64);
     static queenRays = Array(64);
-    static kingAttacks = Array(64);
+    static kingMoves = Array(64);
 
     static initialized = false;
 
@@ -16,8 +16,8 @@ export class ChessEngine {
         ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
         ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
         ['.', '.', '.', '.', '.', '.', '.', '.'],
-        ['.', '.', '.', '.', 'Q', '.', '.', '.'],
-        ['.', '.', '.', 'P', 'Q', 'p', '.', '.'],
+        ['.', '.', '.', '.', '.', '.', '.', '.'],
+        ['.', '.', '.', '.', '.', '.', '.', '.'],
         ['.', '.', '.', '.', '.', '.', '.', '.'],
         ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'],
         ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
@@ -68,10 +68,10 @@ export class ChessEngine {
             blackKingSide: true,
             blackQueenSide: true
         };
-        this.enPassantSquare = null;
+        this.enPassantSquare = -1;
 
         if (!ChessEngine.initialized) {
-            this.initAttackTables();
+            this.initMoveTables();
             ChessEngine.initialized = true;
         }
 
@@ -89,7 +89,7 @@ export class ChessEngine {
     }
 
     MovePiece(fr, fc, tr, tc, promotePiece = null) {
-        if (!this.isLegalMove(fr, fc, tr, tc) || this.gameCondition !== 'PLAYING') return;
+        // if (!this.isLegalMove(fr, fc, tr, tc) || this.gameCondition !== 'PLAYING') return;
 
         // Get pieces
         const originalPiece = this.getPiece(fr, fc);
@@ -129,11 +129,12 @@ export class ChessEngine {
         // Reset En-passsant rights
         if (this.enPassantSquare) this.zobrist.xorEP(this.enPassantSquare);
         const prevEnPassant = this.enPassantSquare;
-        this.enPassantSquare = null;
+        this.enPassantSquare = -1;
 
         // En-passant capture
         let isEnPassantCapture = false;
-        if (isPawn && prevEnPassant && tc === prevEnPassant && !isCapture) {
+        const { r: epr, c: epc } = this.fromSq(prevEnPassant);
+        if (isPawn && prevEnPassant !== -1 && tr === epr && tc === epc && !isCapture) {
             const capRow = isWhite ? tr + 1 : tr - 1;
             targetPiece = this.getPiece(capRow, tc);
 
@@ -208,8 +209,9 @@ export class ChessEngine {
 
         // En-passant rights
         if (isPawn && Math.abs(fr - tr) === 2) {
-            this.enPassantSquare = fc;
-            this.zobrist.xorEP(fc);
+            const epRow = (fr + tr) / 2;
+            this.enPassantSquare = this.toSq(epRow, fc);
+            this.zobrist.xorEP(this.enPassantSquare);
         }
 
         this.zobrist.xorTurn();
@@ -241,14 +243,15 @@ export class ChessEngine {
         });
 
         // Game condition
-        const result = this.evaluateEndConditions();
-            if (result) this.gameCondition = result;
+        // const result = this.evaluateEndConditions();
+        //     if (result) this.gameCondition = result;
 
         // Switch turn
         if (this.gameCondition == 'PLAYING') this.SwitchTurn();
 
         // UI
         if (this.renderer) {
+            console.log(this.zobrist.hash);
             this.renderer.UpdateSquare(fr, fc);
             this.renderer.UpdateSquare(tr, tc);
             this.renderer.UpdateGame();
@@ -359,8 +362,8 @@ export class ChessEngine {
         this.zobrist.xorCastleRights(castlingRights);
 
         // Restore En-passant square
-        if (this.enPassantSquare) this.zobrist.xorEP(this.enPassantSquare);
-        this.enPassantSquare = null;
+        if (this.enPassantSquare > 0) this.zobrist.xorEP(this.enPassantSquare);
+        this.enPassantSquare = -1;
         if (enPassantSquare) {
             this.enPassantSquare = enPassantSquare;
             this.zobrist.xorEP(enPassantSquare);
@@ -377,6 +380,7 @@ export class ChessEngine {
 
         // UI updates
         if (this.renderer) {
+            console.log(this.zobrist.hash);
             this.renderer.UpdateSquare(fr, fc);
             this.renderer.UpdateSquare(tr, tc);
             this.renderer.UpdateGame();
@@ -414,15 +418,20 @@ export class ChessEngine {
         switch (piece.toLowerCase()) {
             // Pawn
             case 'p':
-                attacks = isWhite ? ChessEngine.pawnAttacksWhite[fsq].and(enemyOccupied)
-                                  : ChessEngine.pawnAttacksBlack[fsq].and(enemyOccupied);
+                attacks = isWhite ? ChessEngine.pawnMovesWhite[fsq].and(enemyOccupied)
+                                  : ChessEngine.pawnMovesBlack[fsq].and(enemyOccupied);
 
-                // Add diagonal captures
-                for (const t of attacks.allSquares()) moves.push([ Math.floor(t / 8), t % 8, null ]);
+                // Diagonal captures
+                for (const tsq of attacks.allSquares()) {
+                    const { r: tr, c: tc } = this.fromSq(tsq);
 
-                // Add forward pushes
-                const forward = isWhite ? fr - 1 : fr + 1;
-                if (forward >= 0 && forward < 8) {
+                    moves.push([ tr, tc, null ]);
+                }
+
+                // Forward pushes
+                const dir = isWhite ? -1 : 1;
+                const forward = fr + dir;
+                if (forward >= 0 && forward < this.rows) {
                     if (this.isEmpty(this.getPiece(forward, fc))) {
                         moves.push([forward, fc, null]);
 
@@ -433,11 +442,23 @@ export class ChessEngine {
                         }
                     }
                 }
+
+                // En-passant captures
+                const epTarget = this.enPassantSquare;
+                if (epTarget !== null && epTarget !== -1) {
+                    const { r: epr, c: epc } = this.fromSq(epTarget);
+
+                    if (Math.abs(epc - fc) === 1 && epr === fr + dir) moves.push([epr, epc, null]);
+                }
                 break;
             // Knight
             case 'n':
-                attacks = ChessEngine.knightAttacks[fsq].and(enemyOccupied.not());
-                for (const t of attacks.allSquares()) moves.push([Math.floor(t / 8), t % 8, null]);
+                attacks = ChessEngine.knightMoves[fsq].and(ownOccupied.not());
+                for (const tsq of attacks.allSquares()) {
+                    const { r: tr, c: tc } = this.fromSq(tsq);
+
+                    moves.push([ tr, tc, null ]);
+                }
                 break;
             // Rook
             case 'r':
@@ -445,18 +466,54 @@ export class ChessEngine {
             case 'b':
             // Queen
             case 'q':
-                attacks = this.getSlidingAttacks(piece.toLowerCase(), fsq).and(enemyOccupied.not());
-                for (const t of attacks.allSquares()) moves.push([Math.floor(t / 8), t % 8, null]);
+                attacks = this.getSlidingAttacks(piece.toLowerCase(), fsq).and(ownOccupied.not());
+                for (const tsq of attacks.allSquares()) {
+                    const { r: tr, c: tc } = this.fromSq(tsq);
+
+                    moves.push([ tr, tc, null ]);
+                }
                 break;
             // King
             case 'k':
-                attacks = ChessEngine.kingAttacks[fsq].and(enemyOccupied.not());
-                for (const t of attacks.allSquares()) moves.push([Math.floor(t / 8), t % 8, null]);
+                attacks = ChessEngine.kingMoves[fsq].and(ownOccupied.not());
+                for (const tsq of attacks.allSquares()) {
+                    const { r: tr, c: tc } = this.fromSq(tsq);
+
+                    moves.push([ tr, tc, null ]);
+                }
+
+                // Castling
+                const castleRow = isWhite ? 7 : 0;
+                if (fr === castleRow && fc === 4) {
+                    const kingSide = isWhite ? this.castlingRights.whiteKingSide : this.castlingRights.blackKingSide;
+                    const queenSide = isWhite ? this.castlingRights.whiteQueenSide : this.castlingRights.blackQueenSide;
+
+                    // King-side
+                    if (kingSide &&
+                        this.isEmpty(this.getPiece(castleRow, 5)) &&
+                        this.isEmpty(this.getPiece(castleRow, 6))
+                        // !this.isSquareAttacked(castleRow, 4, isWhite) &&
+                        // !this.isSquareAttacked(castleRow, 5, isWhite) &&
+                        // !this.isSquareAttacked(castleRow, 6, isWhite)
+                    ) moves.push([ castleRow, 6, null ]);
+
+                    // Queen-side
+                    if (queenSide &&
+                        this.isEmpty(this.getPiece(castleRow, 1)) &&
+                        this.isEmpty(this.getPiece(castleRow, 2)) &&
+                        this.isEmpty(this.getPiece(castleRow, 3))
+                        // !this.isSquareAttacked(castleRow, 4, isWhite) &&
+                        // !this.isSquareAttacked(castleRow, 3, isWhite) &&
+                        // !this.isSquareAttacked(castleRow, 2, isWhite)
+                    ) moves.push([ castleRow, 2, null ]);
+                }
+
                 break;
         }
 
         return moves;
     }
+
 
     isLegalMove2(fr, fc, tr, tc) {
         const piece = this.getPiece(fr, fc);
@@ -656,8 +713,7 @@ export class ChessEngine {
             let sq = bb.bitIndex();
 
             while (sq >= 0) {
-                const r = this.rows - 1 - Math.floor(sq / this.rows);
-                const c = sq % this.cols;
+                const { r, c } = this.fromSq(sq);
                 
                 if (this.isLegalMove(r, c, fr, fc)) return true;
                 
@@ -677,10 +733,9 @@ export class ChessEngine {
         const sq = kingBB.bitIndex();
         if (sq === -1) return true; // king missing = checkmate by definition
 
-        const kr = this.rows - 1 - Math.floor(sq / this.rows);
-        const kc = sq % this.cols;
+        const { r, c } = this.fromSq(sq);
 
-        return { r: kr, c: kc };
+        return { r, c };
     }
 
     isKingInCheck(isWhite) {
@@ -815,6 +870,8 @@ export class ChessEngine {
     }
 
     toSq(r, c) { return (this.rows - 1 - r) * this.cols + c; }
+    fromSq(sq) { return { r: this.rows - 1 - Math.floor(sq / this.rows), c: sq % this.cols } }
+
     isWhite(p) { return p ? p !== '.' && p === p.toUpperCase() : null; }
     isBlack(p) { return p ? p !== '.' && p === p.toLowerCase() : null; }
     isEmpty(p) { return p ? p == '.' : null; }
@@ -840,26 +897,26 @@ export class ChessEngine {
     }
 
 
-    initAttackTables() {
+    initMoveTables() {
         const add = (bb, sq) => bb.setBit(sq);
-        const inBoard = (r,c) => r >= 0 && r < 8 && c >= 0 && c < 8;
+        const inBoard = (r,c) => r >= 0 && r < this.rows && c >= 0 && c < this.cols;
 
         // Loop squares 0..63
         for (let sq = 0; sq < 64; sq++) {
-            let r = sq >> 3, c = sq & 7;
+            const { r, c } = this.fromSq(sq);
 
             // Pawn moves
             let wbb = new BitBoard(), bbb = new BitBoard();
 
-            // white pawns attack up
-            if (inBoard(r - 1, c - 1)) add(wbb, (r - 1) * 8 + (c - 1));
-            if (inBoard(r - 1, c + 1)) add(wbb, (r - 1) * 8 + (c + 1));
-            ChessEngine.pawnAttacksWhite[sq] = wbb;
+            // white pawns move up
+            if (inBoard(r - 1, c - 1)) add(wbb, this.toSq(r - 1, c - 1));
+            if (inBoard(r - 1, c + 1)) add(wbb, this.toSq(r - 1, c + 1));
+            ChessEngine.pawnMovesWhite[sq] = wbb;
 
-            // black pawns attack down
-            if (inBoard(r + 1, c - 1)) add(bbb, (r + 1) * 8 + (c - 1));
-            if (inBoard(r + 1, c + 1)) add(bbb, (r + 1) * 8 + (c + 1));
-            ChessEngine.pawnAttacksBlack[sq] = bbb;
+            // black pawns move down
+            if (inBoard(r + 1, c - 1)) add(bbb, this.toSq(r + 1, c - 1));
+            if (inBoard(r + 1, c + 1)) add(bbb, this.toSq(r + 1, c + 1));
+            ChessEngine.pawnMovesBlack[sq] = bbb;
 
             // Knight
             let nbb = new BitBoard();
@@ -869,7 +926,7 @@ export class ChessEngine {
                 [r + 1, c + 2], [r + 1, c - 2], [r - 1, c + 2], [r - 1, c - 2],
             ];
             for (const [rr, cc] of knightMoves) if (inBoard(rr, cc)) add(nbb, this.toSq(rr, cc));
-            ChessEngine.knightAttacks[sq] = nbb;
+            ChessEngine.knightMoves[sq] = nbb;
 
             // Rook, Bishop and Queen
             // Directions for rook and bishop sliding
@@ -912,31 +969,37 @@ export class ChessEngine {
                 let rr = r + dr, cc = c + dc;
                 if (inBoard(rr, cc)) add(kbb, this.toSq(rr, cc));
             }
-            ChessEngine.kingAttacks[sq] = kbb;
+            ChessEngine.kingMoves[sq] = kbb;
         }
     }
 
     getSlidingAttacks(type, fsq) {
         const occupied = this.occupied;
-        const r = Math.floor(fsq / 8);
-        const c = fsq % 8;
-        let attacks = new BitBoard();
+        const { r: fr, c: fc } = this.fromSq(fsq);
 
-        const directions = {
-            'r': [[-1,0],[1,0],[0,-1],[0,1]],
-            'b': [[-1,-1],[-1,1],[1,-1],[1,1]],
-            'q': [[-1,0],[1,0],[0,-1],[0,1],[-1,-1],[-1,1],[1,-1],[1,1]]
-        }[type];
+        let rays;
+        switch(type) {
+            case 'r': rays = ChessEngine.rookRays[fsq]; break;
+            case 'b': rays = ChessEngine.bishopRays[fsq]; break;
+            case 'q': rays = ChessEngine.queenRays[fsq]; break;
+        }
 
-        for (const [dr, dc] of directions) {
-            let rr = r + dr;
-            let cc = c + dc;
-            while (rr >= 0 && rr < 8 && cc >= 0 && cc < 8) {
-                const sq = this.toSq(rr, cc);
-                attacks.setBit(sq);
-                if (occupied.has(sq)) break; // stop at blocker
-                rr += dr;
-                cc += dc;
+        let attacks = rays.clone();
+
+        for (let tsq of rays.allSquares()) {
+            if (occupied.has(tsq)) {
+                const { r: tr, c: tc } = this.fromSq(tsq);
+
+                const dirR = Math.sign(tr - fr);
+                const dirC = Math.sign(tc - fc);
+
+                let rr = tr + dirR;
+                let cc = tc + dirC;
+                while (rr >= 0 && rr < this.rows && cc >= 0 && cc < this.cols) {
+                    attacks.clearBit(this.toSq(rr, cc));
+                    rr += dirR;
+                    cc += dirC;
+                }
             }
         }
 

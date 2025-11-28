@@ -205,7 +205,7 @@ export class ChessRender {
         }
 
         // Case 3: has previous target and a valid new target -> move piece
-        if (this.lastSelected != null && this.engine.isLegalMove(this.lastSelected?.row, this.lastSelected?.col, row, col)) {
+        if (this.lastSelected != null && e.target.classList.contains('highlight')) {
             console.log('Move from', this.lastSelected?.row, this.lastSelected?.col, 'to', row, col);
             this.engine.MovePiece(this.lastSelected?.row, this.lastSelected?.col, row, col);
 
