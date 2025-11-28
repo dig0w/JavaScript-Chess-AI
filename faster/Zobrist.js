@@ -50,7 +50,6 @@ export class Zobrist {
 
     // En-passant square file
     xorEP(file) {
-        console.log('ep', file);
         if (file >= 0 && file < 8) this.hash ^= this.ep[file];
     }
 

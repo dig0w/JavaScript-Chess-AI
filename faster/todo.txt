@@ -1,2 +1,1 @@
-hasLegalMoves has to be better
-moveKeepsKingSafe has to be faster
+look into magic bitboards

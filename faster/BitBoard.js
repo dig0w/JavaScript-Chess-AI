@@ -102,4 +102,16 @@ export class BitBoard {
         x = (x & 0x33333333) + ((x >>> 2) & 0x33333333);
         return (((x + (x >>> 4)) & 0x0F0F0F0F) * 0x01010101) >>> 24;
     }
+    popLSB() {
+        // If there are bits in lo we take from there
+        if (this.lo !== 0) {
+            const lsb = this.lo & -this.lo;       // isolate lowest bit
+            this.lo ^= lsb;                     // remove bit
+            return Math.clz32(lsb) ^ 31;      // position = bit index (0–31)
+        } 
+        // otherwise take from hi
+        const lsb = this.hi & -this.hi;
+        this.hi ^= lsb;
+        return 32 + (Math.clz32(lsb) ^ 31);   // 32–63 range
+    }
 }
