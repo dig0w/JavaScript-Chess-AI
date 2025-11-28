@@ -1,6 +1,4 @@
-End Conditions
-    Checkmate
-    Stalemate
-
+hasLegalMoves has to be better
+moveKeepsKingSafe has to be faster
 
 Precomputed move masks (knight, king, sliding rays)

@@ -96,41 +96,41 @@
             chess.undoMove();
         });
 
-        let epoch = 10000;
-        let summedTest1 = 0;
-        let summedTest2 = 0;
+        // let epoch = 10000;
+        // let summedTest1 = 0;
+        // let summedTest2 = 0;
 
-        const move = {
-            "fr": 6,
-            "fc": 0,
-            "tr": 5,
-            "tc": 0,
-            "promote": null
-        };
+        // const move = {
+        //     "fr": 6,
+        //     "fc": 0,
+        //     "tr": 5,
+        //     "tc": 0,
+        //     "promote": null
+        // };
 
-        const copy = chess.clone();
+        // const copy = chess.clone();
 
-        for (let i = 0; i < epoch; i++) {
-            const startTime1 = performance.now();
+        // for (let i = 0; i < epoch; i++) {
+        //     const startTime1 = performance.now();
 
-            copy.MovePiece(move.fr, move.fc, move.tr, move.tc, move.promote);
+        //     copy.MovePiece(move.fr, move.fc, move.tr, move.tc, move.promote);
 
-            summedTest1 += performance.now() - startTime1;
+        //     summedTest1 += performance.now() - startTime1;
 
-            const startTime2 = performance.now();
+        //     const startTime2 = performance.now();
 
-            copy.undoMove();
+        //     copy.undoMove();
 
-            summedTest2 += performance.now() - startTime2;
-        }
+        //     summedTest2 += performance.now() - startTime2;
+        // }
 
-        const finalTest1 = summedTest1 / epoch;
-        const finalTest2 = summedTest2 / epoch;
+        // const finalTest1 = summedTest1 / epoch;
+        // const finalTest2 = summedTest2 / epoch;
 
-        console.log('Runned tests', epoch, 'times');
-        console.log('Avg Move and undoMove time:', finalTest1 + finalTest2);
-        console.log('Avg Move time:', finalTest1);
-        console.log('Avg undoMove time:', finalTest2);
+        // console.log('Runned tests', epoch, 'times');
+        // console.log('Avg Move and undoMove time:', finalTest1 + finalTest2);
+        // console.log('Avg Move time:', finalTest1);
+        // console.log('Avg undoMove time:', finalTest2);
     };
 </script>
 

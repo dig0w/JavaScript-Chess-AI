@@ -112,21 +112,21 @@ export class ChessRender {
         // Turn
         this.turnDisplay.textContent = this.engine.turn == 0 ? 'White' : 'Black';
 
-        // Checks
-        document.querySelectorAll('.checked').forEach(sq => sq.classList.remove('checked'));
+        // // Checks
+        // document.querySelectorAll('.checked').forEach(sq => sq.classList.remove('checked'));
 
-        if (this.engine.isKingInCheck(true)) {
-            const { r, c } = this.engine.getKing(true);
+        // if (this.engine.isKingInCheck(true)) {
+        //     const { r, c } = this.engine.getKing(true);
 
-            const sq = document.querySelector(`.square[data-row="${r}"][data-col="${c}"]`);
-            if (sq) sq.classList.add('checked');
-        }
-        if (this.engine.isKingInCheck(false)) {
-            const { r, c } = this.engine.getKing(false);
+        //     const sq = document.querySelector(`.square[data-row="${r}"][data-col="${c}"]`);
+        //     if (sq) sq.classList.add('checked');
+        // }
+        // if (this.engine.isKingInCheck(false)) {
+        //     const { r, c } = this.engine.getKing(false);
 
-            const sq = document.querySelector(`.square[data-row="${r}"][data-col="${c}"]`);
-            if (sq) sq.classList.add('checked');
-        }
+        //     const sq = document.querySelector(`.square[data-row="${r}"][data-col="${c}"]`);
+        //     if (sq) sq.classList.add('checked');
+        // }
 
         // Highlight last move
         document.querySelectorAll('.selected').forEach(sq => sq.classList.remove('selected'));

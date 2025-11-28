@@ -1,27 +1,26 @@
 import { BitBoard } from './BitBoard.js';
 import { Zobrist } from './Zobrist.js';
 
-// [
-//         ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
-//         ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
-//         ['.', '.', '.', '.', '.', '.', '.', '.'],
-//         ['.', '.', '.', '.', '.', '.', '.', '.'],
-//         ['.', '.', '.', '.', '.', '.', '.', '.'],
-//         ['.', '.', '.', '.', '.', '.', '.', '.'],
-//         ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'],
-//         ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
-//     ]
-
 export class ChessEngine {
+    static pawnAttacksWhite = Array(64);
+    static pawnAttacksBlack = Array(64);
+    static knightAttacks = Array(64);
+    static rookRays = Array(64);
+    static bishopRays = Array(64);
+    static queenRays = Array(64);
+    static kingAttacks = Array(64);
+
+    static initialized = false;
+
     constructor(board = [
         ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
         ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
         ['.', '.', '.', '.', '.', '.', '.', '.'],
-        ['.', '.', '.', '.', '.', 'r', '.', '.'],
-        ['.', '.', '.', '.', '.', '.', '.', 'b'],
+        ['.', '.', '.', '.', 'Q', '.', '.', '.'],
+        ['.', '.', '.', 'P', 'Q', 'p', '.', '.'],
         ['.', '.', '.', '.', '.', '.', '.', '.'],
-        ['P', 'P', 'P', 'P', 'P', '.', 'P', 'P'],
-        ['R', '.', '.', '.', 'K', '.', '.', 'R']
+        ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'],
+        ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
     ]) {
         this.rows = 8;
         this.cols = 8;
@@ -62,6 +61,7 @@ export class ChessEngine {
         this.occupiedBlack = this.pieces.p.or(this.pieces.n).or(this.pieces.b).or(this.pieces.r).or(this.pieces.q).or(this.pieces.k);
         this.occupied = this.occupiedWhite.or(this.occupiedBlack);
 
+        // Moves
         this.castlingRights = {
             whiteKingSide: true,
             whiteQueenSide: true,
@@ -69,6 +69,11 @@ export class ChessEngine {
             blackQueenSide: true
         };
         this.enPassantSquare = null;
+
+        if (!ChessEngine.initialized) {
+            this.initAttackTables();
+            ChessEngine.initialized = true;
+        }
 
         this.turn = 0;
 
@@ -122,13 +127,13 @@ export class ChessEngine {
         }
 
         // Reset En-passsant rights
-        if (this.enPassantSquare) this.zobrist.xorEP(this.enPassantSquare.c);
-        const prevEnPassant = this.enPassantSquare ? { r: this.enPassantSquare.r, c: this.enPassantSquare.c } : null;
+        if (this.enPassantSquare) this.zobrist.xorEP(this.enPassantSquare);
+        const prevEnPassant = this.enPassantSquare;
         this.enPassantSquare = null;
 
         // En-passant capture
         let isEnPassantCapture = false;
-        if (isPawn && prevEnPassant && tr === prevEnPassant.r && tc === prevEnPassant.c && !isCapture) {
+        if (isPawn && prevEnPassant && tc === prevEnPassant && !isCapture) {
             const capRow = isWhite ? tr + 1 : tr - 1;
             targetPiece = this.getPiece(capRow, tc);
 
@@ -203,7 +208,7 @@ export class ChessEngine {
 
         // En-passant rights
         if (isPawn && Math.abs(fr - tr) === 2) {
-            this.enPassantSquare = { r: (fr + tr) / 2, c: fc };
+            this.enPassantSquare = fc;
             this.zobrist.xorEP(fc);
         }
 
@@ -354,11 +359,11 @@ export class ChessEngine {
         this.zobrist.xorCastleRights(castlingRights);
 
         // Restore En-passant square
-        if (this.enPassantSquare) this.zobrist.xorEP(this.enPassantSquare.c);
+        if (this.enPassantSquare) this.zobrist.xorEP(this.enPassantSquare);
         this.enPassantSquare = null;
         if (enPassantSquare) {
-            this.enPassantSquare = { r: enPassantSquare.r, c: enPassantSquare.c };
-            this.zobrist.xorEP(enPassantSquare.c);
+            this.enPassantSquare = enPassantSquare;
+            this.zobrist.xorEP(enPassantSquare);
         }
 
         // Restore halfmove clock
@@ -391,7 +396,69 @@ export class ChessEngine {
         }
     }
 
-    isLegalMove(fr, fc, tr, tc) {
+
+    getLegalMoves(fr, fc) {
+        const piece = this.getPiece(fr, fc);
+            if (this.isEmpty(piece)) return [];
+
+        const isWhite = this.isWhite(piece);
+
+        let attacks;
+        const moves = [];
+
+        const fsq = this.toSq(fr, fc);
+
+        const ownOccupied = isWhite ? this.occupiedWhite : this.occupiedBlack;
+        const enemyOccupied = isWhite ? this.occupiedBlack : this.occupiedWhite;
+
+        switch (piece.toLowerCase()) {
+            // Pawn
+            case 'p':
+                attacks = isWhite ? ChessEngine.pawnAttacksWhite[fsq].and(enemyOccupied)
+                                  : ChessEngine.pawnAttacksBlack[fsq].and(enemyOccupied);
+
+                // Add diagonal captures
+                for (const t of attacks.allSquares()) moves.push([ Math.floor(t / 8), t % 8, null ]);
+
+                // Add forward pushes
+                const forward = isWhite ? fr - 1 : fr + 1;
+                if (forward >= 0 && forward < 8) {
+                    if (this.isEmpty(this.getPiece(forward, fc))) {
+                        moves.push([forward, fc, null]);
+
+                        // Double push from starting rank
+                        const startRow = isWhite ? 6 : 1;
+                        if (fr === startRow && this.isEmpty(this.getPiece(forward + (isWhite ? -1 : 1), fc))) {
+                            moves.push([forward + (isWhite ? -1 : 1), fc, null]);
+                        }
+                    }
+                }
+                break;
+            // Knight
+            case 'n':
+                attacks = ChessEngine.knightAttacks[fsq].and(enemyOccupied.not());
+                for (const t of attacks.allSquares()) moves.push([Math.floor(t / 8), t % 8, null]);
+                break;
+            // Rook
+            case 'r':
+            // Bishop
+            case 'b':
+            // Queen
+            case 'q':
+                attacks = this.getSlidingAttacks(piece.toLowerCase(), fsq).and(enemyOccupied.not());
+                for (const t of attacks.allSquares()) moves.push([Math.floor(t / 8), t % 8, null]);
+                break;
+            // King
+            case 'k':
+                attacks = ChessEngine.kingAttacks[fsq].and(enemyOccupied.not());
+                for (const t of attacks.allSquares()) moves.push([Math.floor(t / 8), t % 8, null]);
+                break;
+        }
+
+        return moves;
+    }
+
+    isLegalMove2(fr, fc, tr, tc) {
         const piece = this.getPiece(fr, fc);
             if (this.isEmpty(piece)) return false;
 
@@ -429,8 +496,12 @@ export class ChessEngine {
                     if (!this.isEmpty(targetPiece) && this.isWhite(targetPiece) != isWhite) isLegal = true;
 
                     // En-passant capture
-                    if (this.enPassantSquare && this.enPassantSquare.r === tr && this.enPassantSquare.c === tc && this.isEmpty(targetPiece)) isLegal = true;
+                    if (this.enPassantSquare === tc && this.isEmpty(targetPiece)) isLegal = true;
                 }
+                break;
+            // Knight
+            case 'n':
+                isLegal = (absR === 2 && absC === 1) || (absR === 1 && absC === 2);
                 break;
             // Rook
             case 'r':
@@ -443,10 +514,6 @@ export class ChessEngine {
             // Queen
             case 'q':
                 if ((dr === 0 || dc === 0) || absR === absC) isLegal = this.isPathClear(fr, fc, tr, tc);
-                break;
-            // Knight
-            case 'n':
-                isLegal = (absR === 2 && absC === 1) || (absR === 1 && absC === 2);
                 break;
             // King
             case 'k':
@@ -486,7 +553,7 @@ export class ChessEngine {
         return isLegal && this.moveKeepsKingSafe(fr, fc, tr, tc);
     }
 
-    getLegalMoves(fr, fc) {
+    getLegalMoves2(fr, fc) {
         const piece = this.getPiece(fr, fc);
             if (this.isEmpty(piece)) return [];
 
@@ -497,16 +564,15 @@ export class ChessEngine {
         // last rank based on side
         const promoteRank = isWhite ? 0 : this.rows - 1;
 
-        const oppOccupied = isWhite ? this.occupiedBlack : this.occupiedWhite;
-        const allOccupied = this.occupied;
+        const meOccupied = isWhite ? this.occupiedWhite : this.occupiedBlack;
 
         for (let tr = 0; tr < this.rows; tr++) {
             for (let tc = 0; tc < this.cols; tc++) {
-                const sq = this.toSq(r, c);
+                const sq = this.toSq(tr, tc);
 
-                if (allOccupied.has(sq) && !oppOccupied.has(sq)) continue;
+                if (meOccupied.has(sq)) continue;
 
-                if (!this.isLegalMove(fr, fc, r, c)) continue;
+                if (!this.isLegalMove(fr, fc, tr, tc)) continue;
 
                 // Promotion
                 if (isPawn && tr === promoteRank) {
@@ -524,16 +590,42 @@ export class ChessEngine {
         return moves;
     }
 
-    evaluateEndConditions() {
-        // const whiteTurn = this.turn === 0;
+    hasLegalMoves(isWhite) {
+        const meOccupied = isWhite ? this.occupiedWhite : this.occupiedBlack;
 
-        // if (!this.hasLegalMoves(!whiteTurn)) {
-        //     if (this.isKingInCheck(!whiteTurn)) {
-        //         return !whiteTurn ? 'BLACK_WINS_CHECKMATE' : 'WHITE_WINS_CHECKMATE';
-        //     } else {
-        //         return 'DRAW_STALEMATE';
-        //     }
-        // }
+        for (let fr = 0; fr < this.rows; fr++) {
+            for (let fc = 0; fc < this.cols; fc++) {
+                const fsq = this.toSq(fr, fc);
+
+                if (!meOccupied.has(fsq)) continue;
+
+                // Try every square
+                for (let tr = 0; tr < this.rows; tr++) {
+                    for (let tc = 0; tc < this.cols; tc++) {
+                        const tsq = this.toSq(tr, tc);
+
+                        if (meOccupied.has(tsq)) continue;
+
+                        if (this.isLegalMove(fr, fc, tr, tc)) return true;
+                    }
+                }
+            }
+        }
+
+        return false;
+    }
+
+
+    evaluateEndConditions() {
+        const whiteTurn = this.turn === 0;
+
+        if (!this.hasLegalMoves(!whiteTurn)) {
+            if (this.isKingInCheck(!whiteTurn)) {
+                return !whiteTurn ? 'BLACK_WINS_CHECKMATE' : 'WHITE_WINS_CHECKMATE';
+            } else {
+                return 'DRAW_STALEMATE';
+            }
+        }
 
         if (this.insufficientMaterial()) return 'DRAW_DEAD_POSITION';
 
@@ -642,22 +734,6 @@ export class ChessEngine {
     }
 
 
-    isPathClear(fr, fc, tr, tc) {
-        const stepR = Math.sign(tr - fr);
-        const stepC = Math.sign(tc - fc);
-
-        let r = fr + stepR;
-        let c = fc + stepC;
-
-        while (r !== tr || c !== tc) {
-            if (this.occupied.has((this.rows - 1 - r) * this.cols + c)) return false;
-            r += stepR;
-            c += stepC;
-        }
-        return true;
-    }
-
-
     insufficientMaterial() {
         const whiteTurn = this.turn === 0;
 
@@ -696,6 +772,21 @@ export class ChessEngine {
     }
 
 
+    isPathClear(fr, fc, tr, tc) {
+        const stepR = Math.sign(tr - fr);
+        const stepC = Math.sign(tc - fc);
+
+        let r = fr + stepR;
+        let c = fc + stepC;
+
+        while (r !== tr || c !== tc) {
+            if (this.occupied.has((this.rows - 1 - r) * this.cols + c)) return false;
+            r += stepR;
+            c += stepC;
+        }
+        return true;
+    }
+
     getPiece(r, c) {
         const sq = this.toSq(r, c);
 
@@ -723,10 +814,7 @@ export class ChessEngine {
         return '.';
     }
 
-    toSq(r, c) {
-        return (this.rows - 1 - r) * this.cols + c;
-    }
-
+    toSq(r, c) { return (this.rows - 1 - r) * this.cols + c; }
     isWhite(p) { return p ? p !== '.' && p === p.toUpperCase() : null; }
     isBlack(p) { return p ? p !== '.' && p === p.toLowerCase() : null; }
     isEmpty(p) { return p ? p == '.' : null; }
@@ -749,5 +837,109 @@ export class ChessEngine {
         clone.gameCondition = this.gameCondition;
 
         return clone;
+    }
+
+
+    initAttackTables() {
+        const add = (bb, sq) => bb.setBit(sq);
+        const inBoard = (r,c) => r >= 0 && r < 8 && c >= 0 && c < 8;
+
+        // Loop squares 0..63
+        for (let sq = 0; sq < 64; sq++) {
+            let r = sq >> 3, c = sq & 7;
+
+            // Pawn moves
+            let wbb = new BitBoard(), bbb = new BitBoard();
+
+            // white pawns attack up
+            if (inBoard(r - 1, c - 1)) add(wbb, (r - 1) * 8 + (c - 1));
+            if (inBoard(r - 1, c + 1)) add(wbb, (r - 1) * 8 + (c + 1));
+            ChessEngine.pawnAttacksWhite[sq] = wbb;
+
+            // black pawns attack down
+            if (inBoard(r + 1, c - 1)) add(bbb, (r + 1) * 8 + (c - 1));
+            if (inBoard(r + 1, c + 1)) add(bbb, (r + 1) * 8 + (c + 1));
+            ChessEngine.pawnAttacksBlack[sq] = bbb;
+
+            // Knight
+            let nbb = new BitBoard();
+
+            const knightMoves = [
+                [r + 2, c + 1], [r + 2, c - 1], [r - 2, c + 1], [r - 2, c - 1],
+                [r + 1, c + 2], [r + 1, c - 2], [r - 1, c + 2], [r - 1, c - 2],
+            ];
+            for (const [rr, cc] of knightMoves) if (inBoard(rr, cc)) add(nbb, this.toSq(rr, cc));
+            ChessEngine.knightAttacks[sq] = nbb;
+
+            // Rook, Bishop and Queen
+            // Directions for rook and bishop sliding
+            const rookDirs   = [[1, 0], [-1, 0], [0, 1], [0, -1]];
+            const bishopDirs = [[1, 1], [1, -1], [-1, 1], [-1, -1]];
+                
+                let rookBB   = new BitBoard();
+                let bishopBB = new BitBoard();
+
+            // Rook rays
+            for (const [dr,dc] of rookDirs) {
+                let rr = r + dr, cc = c + dc;
+                while (inBoard(rr,cc)) {
+                    add(rookBB, this.toSq(rr, cc));
+                    rr += dr; cc += dc;
+                }
+            }
+
+            // Bishop rays
+            for (const [dr,dc] of bishopDirs) {
+                let rr = r + dr, cc = c + dc;
+                while (inBoard(rr,cc)) {
+                    add(bishopBB, this.toSq(rr, cc));
+                    rr += dr; cc += dc;
+                }
+            }
+
+            ChessEngine.rookRays[sq]   = rookBB;
+            ChessEngine.bishopRays[sq] = bishopBB;
+
+            // Queen = rook + bishop
+            let q = rookBB.clone().or(bishopBB);
+            ChessEngine.queenRays[sq] = q;
+
+            // King moves
+            let kbb = new BitBoard();
+
+            for (let dr =- 1; dr <= 1; dr++) for (let dc=- 1; dc <= 1; dc++) {
+                if (dr === 0 && dc === 0) continue;
+                let rr = r + dr, cc = c + dc;
+                if (inBoard(rr, cc)) add(kbb, this.toSq(rr, cc));
+            }
+            ChessEngine.kingAttacks[sq] = kbb;
+        }
+    }
+
+    getSlidingAttacks(type, fsq) {
+        const occupied = this.occupied;
+        const r = Math.floor(fsq / 8);
+        const c = fsq % 8;
+        let attacks = new BitBoard();
+
+        const directions = {
+            'r': [[-1,0],[1,0],[0,-1],[0,1]],
+            'b': [[-1,-1],[-1,1],[1,-1],[1,1]],
+            'q': [[-1,0],[1,0],[0,-1],[0,1],[-1,-1],[-1,1],[1,-1],[1,1]]
+        }[type];
+
+        for (const [dr, dc] of directions) {
+            let rr = r + dr;
+            let cc = c + dc;
+            while (rr >= 0 && rr < 8 && cc >= 0 && cc < 8) {
+                const sq = this.toSq(rr, cc);
+                attacks.setBit(sq);
+                if (occupied.has(sq)) break; // stop at blocker
+                rr += dr;
+                cc += dc;
+            }
+        }
+
+        return attacks;
     }
 }
