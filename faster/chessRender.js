@@ -8,8 +8,7 @@ export class ChessRender {
         this.boardEl = null;
         this.turnDisplay = null;
         this.logDisplay = null;
-        this.whiteCaptures = null;
-        this.blackCaptures = null;
+
         this.promotionScreen = null;
         this.endScreen = null;
 
@@ -17,13 +16,22 @@ export class ChessRender {
         this.blurredTime = null;
         this.lastPromote = null;
 
+        this.whiteCapturesEl = null;
+        this.whiteCaptures = [];
+        this.whitePoints = 0;
+        this.whiteKingChecked = false;
+        this.blackCapturesEl = null;
+        this.blackCaptures = [];
+        this.blackPoints = 0;
+        this.blackKingChecked = false;
+
         this.assetPrefix = '../assets/chess.com_';
         this.sounds = [
-            this.assetPrefix + 'move-self' + '.mp3',
-            this.assetPrefix + 'capture' + '.mp3',
-            this.assetPrefix + 'move-check' + '.mp3',
-            this.assetPrefix + 'promote' + '.mp3',
-            this.assetPrefix + 'castle' + '.mp3',
+            this.assetPrefix + 'move-self' + '.webm',
+            this.assetPrefix + 'capture' + '.webm',
+            this.assetPrefix + 'move-check' + '.webm',
+            this.assetPrefix + 'promote' + '.webm',
+            this.assetPrefix + 'castle' + '.webm',
         ]
         this.playableSounds = [];
     }
@@ -32,8 +40,8 @@ export class ChessRender {
         this.boardEl = document.getElementById('board');
         this.turnDisplay = document.getElementById('turn-display');
         this.logDisplay = document.getElementById('log-display');
-        this.whiteCaptures = document.getElementById('whiteOpponent').children[1];
-        this.blackCaptures = document.getElementById('blackOpponent').children[1];
+        this.whiteCapturesEl = document.getElementById('whiteOpponent').children[1];
+        this.blackCapturesEl = document.getElementById('blackOpponent').children[1];
         this.promotionScreen = document.getElementById('promotion-screen');
         this.endScreen = document.getElementById('end-screen');
 
@@ -112,22 +120,6 @@ export class ChessRender {
         // Turn
         this.turnDisplay.textContent = this.engine.turn == 0 ? 'White' : 'Black';
 
-        // Checks
-        document.querySelectorAll('.checked').forEach(sq => sq.classList.remove('checked'));
-
-        if (this.engine.isKingInCheck(true)) {
-            const { r, c } = this.engine.getKing(true);
-
-            const sq = document.querySelector(`.square[data-row="${r}"][data-col="${c}"]`);
-            if (sq) sq.classList.add('checked');
-        }
-        if (this.engine.isKingInCheck(false)) {
-            const { r, c } = this.engine.getKing(false);
-
-            const sq = document.querySelector(`.square[data-row="${r}"][data-col="${c}"]`);
-            if (sq) sq.classList.add('checked');
-        }
-
         // Highlight last move
         document.querySelectorAll('.selected').forEach(sq => sq.classList.remove('selected'));
         document.querySelectorAll('.light-selected').forEach(sq => sq.classList.remove('light-selected'));
@@ -141,6 +133,46 @@ export class ChessRender {
             
             fsq.classList.add('light-selected');
             tsq.classList.add('selected');
+        }
+
+        // Captures
+        this.whiteCapturesEl.children[0].innerHTML = '';
+        for (let i = 0; i < this.whiteCaptures.length; i++) {
+            const li = document.createElement('li');
+            li.textContent = this.whiteCaptures[i].toUpperCase();
+
+            this.whiteCapturesEl.children[0].appendChild(li);
+        }
+
+        const whiteDiff = this.whitePoints - this.blackPoints;
+        this.whiteCapturesEl.children[1].textContent = whiteDiff === 0 ? '' : (whiteDiff > 0 ? `+${whiteDiff}` : `${whiteDiff}`);
+
+
+        this.blackCapturesEl.children[0].innerHTML = '';
+        for (let i = 0; i < this.blackCaptures.length; i++) {
+            const li = document.createElement('li');
+            li.textContent = this.blackCaptures[i].toUpperCase();
+
+            this.blackCapturesEl.children[0].appendChild(li);
+        }
+
+        const blackDiff = -whiteDiff;
+        this.blackCapturesEl.children[1].textContent = blackDiff === 0 ? '' : (blackDiff > 0 ? `+${blackDiff}` : `${blackDiff}`);
+
+        // Checks
+        document.querySelectorAll('.checked').forEach(sq => sq.classList.remove('checked'));
+
+        if (this.whiteKingChecked) {
+            const { r, c } = this.engine.getKing(true);
+
+            const sq = document.querySelector(`.square[data-row="${r}"][data-col="${c}"]`);
+            if (sq) sq.classList.add('checked');
+        }
+        if (this.blackKingChecked) {
+            const { r, c } = this.engine.getKing(false);
+
+            const sq = document.querySelector(`.square[data-row="${r}"][data-col="${c}"]`);
+            if (sq) sq.classList.add('checked');
         }
 
         // End Game
@@ -298,5 +330,9 @@ export class ChessRender {
     }
     onPromoBlur(e) {
         this.blurredTime = new Date();
+    }
+
+    PlaySound(type = 0) {
+        this.playableSounds[type].play();
     }
 }

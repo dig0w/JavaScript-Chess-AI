@@ -78,6 +78,7 @@ export class ChessEngine {
         this.turn = 0;
 
         this.promoPieces = ['q', 'r', 'b', 'n'];
+        this.piecePoints = { p: 1, b: 3, n: 3, r: 5, q: 9, k: 0 };
 
         this.zobrist = new Zobrist();
         this.repetitionCount = new Map();
@@ -252,10 +253,26 @@ export class ChessEngine {
 
         // UI
         if (this.renderer) {
-            console.log(this.zobrist.hash);
-            this.renderer.UpdateSquare(fr, fc);
-            this.renderer.UpdateSquare(tr, tc);
-            this.renderer.UpdateGame();
+            if (isCapture || isEnPassantCapture) {
+                if (isWhite) {
+                    this.renderer.whiteCaptures.push(targetPiece);
+                    this.renderer.whitePoints += this.piecePoints[targetPiece.toLowerCase()];
+                } else {
+                    this.renderer.blackCaptures.push(targetPiece);
+                    this.renderer.blackPoints += this.piecePoints[targetPiece.toLowerCase()];
+                }
+            }
+
+            if (promotePiece) {
+                if (isWhite) {
+                    this.renderer.whitePoints += this.piecePoints[promotePiece.toLowerCase()];
+                } else {
+                    this.renderer.blackPoints += this.piecePoints[promotePiece.toLowerCase()];
+                }
+            }
+
+            this.renderer.whiteKingChecked = this.isKingInCheck(true);
+            this.renderer.blackKingChecked = this.isKingInCheck(false);
 
             if (isEnPassantCapture) {
                 const capRow = isWhite ? tr + 1 : tr - 1;
@@ -269,6 +286,17 @@ export class ChessEngine {
                 this.renderer.UpdateSquare(tr, 3);
                 this.renderer.UpdateSquare(tr, 0);
             }
+
+            console.log(this.zobrist.hash);
+            this.renderer.UpdateSquare(fr, fc);
+            this.renderer.UpdateSquare(tr, tc);
+            this.renderer.UpdateGame();
+
+            if (promotePiece) return this.renderer.PlaySound(3);
+            else if (this.renderer.whiteKingChecked || this.renderer.blackKingChecked) return this.renderer.PlaySound(2);
+            else if (isCapture) return this.renderer.PlaySound(1);
+            else if (castle !== 0) return this.renderer.PlaySound(4);
+            else return this.renderer.PlaySound(0);
         }
     }
 
@@ -296,6 +324,7 @@ export class ChessEngine {
         } = lastMove;
 
         const isWhite = this.isWhite(originalPiece);
+        const isCapture = !this.isEmpty(targetPiece);
 
         this.zobrist.xorTurn();
 
@@ -314,7 +343,7 @@ export class ChessEngine {
         fbb.setBit(this.toSq(fr, fc));
         this.zobrist.xorPiece(originalPiece, fr, fc);
 
-        if (!this.isEmpty(targetPiece) && !isEnPassantCapture) {
+        if (isCapture && !isEnPassantCapture) {
             this.zobrist.xorPiece(targetPiece, tr, tc);
             this.pieces[targetPiece].setBit(tSquare)
         };
@@ -381,10 +410,26 @@ export class ChessEngine {
 
         // UI updates
         if (this.renderer) {
-            console.log(this.zobrist.hash);
-            this.renderer.UpdateSquare(fr, fc);
-            this.renderer.UpdateSquare(tr, tc);
-            this.renderer.UpdateGame();
+            if (isCapture || isEnPassantCapture) {
+                if (isWhite) {
+                    this.renderer.whiteCaptures.splice(-1);
+                    this.renderer.whitePoints -= this.piecePoints[targetPiece.toLowerCase()];
+                } else {
+                    this.renderer.blackCaptures.splice(-1);
+                    this.renderer.blackPoints -= this.piecePoints[targetPiece.toLowerCase()];
+                }
+            }
+
+            if (promotePiece) {
+                if (isWhite) {
+                    this.renderer.whitePoints -= this.piecePoints[promotePiece.toLowerCase()];
+                } else {
+                    this.renderer.blackPoints -= this.piecePoints[promotePiece.toLowerCase()];
+                }
+            }
+
+            this.renderer.whiteKingChecked = this.isKingInCheck(true);
+            this.renderer.blackKingChecked = this.isKingInCheck(false);
 
             if (castle == 1) {
                 this.renderer.UpdateSquare(tr, 7);
@@ -398,6 +443,17 @@ export class ChessEngine {
                 const capRow = isWhite ? tr + 1 : tr - 1;
                 this.renderer.UpdateSquare(capRow, tc);
             }
+
+            console.log(this.zobrist.hash);
+            this.renderer.UpdateSquare(fr, fc);
+            this.renderer.UpdateSquare(tr, tc);
+            this.renderer.UpdateGame();
+
+            if (promotePiece) return this.renderer.PlaySound(3);
+            else if (this.renderer.whiteKingChecked || this.renderer.blackKingChecked) return this.renderer.PlaySound(2);
+            else if (isCapture) return this.renderer.PlaySound(1);
+            else if (castle !== 0) return this.renderer.PlaySound(4);
+            else return this.renderer.PlaySound(0);
         }
     }
 

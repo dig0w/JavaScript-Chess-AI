@@ -19,11 +19,11 @@ export class ChessRender {
 
         this.assetPrefix = 'assets/chess.com_';
         this.sounds = [
-            this.assetPrefix + 'move-self' + '.mp3',
-            this.assetPrefix + 'capture' + '.mp3',
-            this.assetPrefix + 'move-check' + '.mp3',
-            this.assetPrefix + 'promote' + '.mp3',
-            this.assetPrefix + 'castle' + '.mp3',
+            this.assetPrefix + 'move-self' + '.webm',
+            this.assetPrefix + 'capture' + '.webm',
+            this.assetPrefix + 'move-check' + '.webm',
+            this.assetPrefix + 'promote' + '.webm',
+            this.assetPrefix + 'castle' + '.webm',
         ]
         this.playableSounds = [];
     }
