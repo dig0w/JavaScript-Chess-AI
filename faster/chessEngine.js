@@ -86,6 +86,9 @@ export class ChessEngine {
         this.gameCondition = 'PLAYING';
         this.logs = [];
 
+        this.whiteAI = null;
+        this.blackAI = null;
+
         this.renderer = null;
     }
 
@@ -739,7 +742,7 @@ export class ChessEngine {
             }
         }
 
-        if (this.insufficientMaterial()) return 'DRAW_DEAD_POSITION';
+        if (this.insufficientMaterial(true) && this.insufficientMaterial(false)) return 'DRAW_DEAD_POSITION';
 
         if (this.halfmoveClock >= 100) return 'DRAW_50-MOVE_RULE';
 
@@ -749,14 +752,12 @@ export class ChessEngine {
         return null;
     }
 
-    insufficientMaterial() {
-        const whiteTurn = this.turn === 0;
-
-        const P = !whiteTurn ? this.pieces.P : this.pieces.p;
-        const N = !whiteTurn ? this.pieces.N : this.pieces.n;
-        const B = !whiteTurn ? this.pieces.B : this.pieces.b;
-        const R = !whiteTurn ? this.pieces.R : this.pieces.r;
-        const Q = !whiteTurn ? this.pieces.Q : this.pieces.q;
+    insufficientMaterial(isWhite) {
+        const P = !isWhite ? this.pieces.P : this.pieces.p;
+        const N = !isWhite ? this.pieces.N : this.pieces.n;
+        const B = !isWhite ? this.pieces.B : this.pieces.b;
+        const R = !isWhite ? this.pieces.R : this.pieces.r;
+        const Q = !isWhite ? this.pieces.Q : this.pieces.q;
 
         // Any pawn/rook/queen = always mating potential
         if (!P.isZero() || !R.isZero() || !Q.isZero()) return false;
@@ -806,6 +807,7 @@ export class ChessEngine {
 
         return { r, c };
     }
+
     getPiece(r, c) {
         const sq = this.toSq(r, c);
 
@@ -1011,6 +1013,7 @@ export class ChessEngine {
             ChessEngine.kingMoves[sq] = kbb;
         }
     }
+
     getSlidingMoves(type, fsq) {
         const occupied = this.occupied;
         const { r: fr, c: fc } = this.fromSq(fsq);
