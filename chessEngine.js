@@ -860,7 +860,7 @@ export class ChessEngine {
         return file + rank;
     }
 
-    minimalClone() {
+    clone() {
         const clone = new ChessEngine(
             this.board.map(row => [...row])
         );

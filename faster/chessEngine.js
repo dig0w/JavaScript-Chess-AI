@@ -576,6 +576,33 @@ export class ChessEngine {
         return moves;
     }
 
+    getPlayerLegalMoves(isWhite) {
+        const moves = [];
+
+        // get list of bitboards for the side to move
+        const pieceList = isWhite
+            ? ['P','N','B','R','Q','K']
+            : ['p','n','b','r','q','k'];
+
+        for (const piece of pieceList) {
+            let bb = this.pieces[piece].clone();  // copy so we can pop bits
+
+            // iterate through every piece position (much faster than 64-square scan)
+            for (let sq = bb.bitIndex(); sq !== -1; bb.clearBit(sq), sq = bb.bitIndex()) {
+                const { r: fr, c: fc } = this.fromSq(sq);
+
+                // getLegalMoves already returns only pseudo legal moves
+                const targets = this.getLegalMoves(fr, fc);
+
+                for (const [tr, tc, promote] of targets) {
+                    moves.push({ fr, fc, tr, tc, promote });
+                }
+            }
+        }
+
+        return moves;
+    }
+
     hasLegalMoves(isWhite) {
         const bb = isWhite 
             ? this.occupiedWhite.clone() 

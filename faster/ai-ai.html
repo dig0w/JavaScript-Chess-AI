@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI vs AI | Mini Chess</title>
+
+    <link rel="stylesheet" href="../style.css">
+</head>
+
+<body>
+    <div class="back">
+        <button onclick="window.location.href='main.html'"><-</button>
+    </div>
+
+    <main class="game-container">
+        <div class="main">
+            <div id="blackOpponent" class="opponent">
+                <h1>Black</h1>
+
+                <div class="captures">
+                    <ul>
+                    </ul>
+
+                    <span>+15</span>
+                </div>
+            </div>
+            <div id="board" class="board">
+                    <section id="promotion-screen" class="popup-promotion hidden">
+                        <button data-piece="q" class="square promotion queen"></button>
+                        <button data-piece="n" class="square promotion knight"></button>
+                        <button data-piece="r" class="square promotion rook"></button>
+                        <button data-piece="b" class="square promotion bishop"></button>
+                    </section>
+            </div>
+            <div id="whiteOpponent" class="opponent">
+                <h1>White</h1>
+
+                <div class="captures">
+                    <ul>
+                    </ul>
+
+                    <span>+15</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="sidebar">
+            <div class="turn">
+                <span>Turn</span>
+                <div id="turn-display">White</div>
+            </div>
+
+            <div class="log">
+                <span>Log</span>
+                <ul id="log-display"></ul>
+            </div>
+
+            <div class="actions">
+                <span>Actions</span>
+                <button id="restart-btn" class="btn" onclick="window.location.reload()">Restart</button>
+            </div>
+        </div>
+    </main>
+
+    <section id="end-screen" class="popup-card hidden">
+        <div class="card">
+            <header>
+                <h1>White Won!</h1>
+                <p>by checkmate</p>
+            </header>
+            <main>
+                <button id="restart-btn" class="btn" onclick="window.location.reload()">Restart</button>
+                <button id="restart-btn" class="btn" onclick="window.location.href='main.html'">Home</button>
+            </main>
+        </div>
+    </section>
+</body>
+
+<script type="module">
+    import { delay } from '../utils.js';
+    import { ChessEngine } from './chessEngine.js';
+    import { ChessRender } from './chessRender.js';
+    import { AIV1 } from '../AI/ai_v1.js';
+    import { AIV2 } from '../AI/ai_v2.js';
+    import { AIV3 } from '../AI/ai_v3.js';
+    import { AIV4 } from '../AI/ai_v4.js';
+    import { AIV5 } from '../AI/ai_v5.js';
+    import { AIV6 } from '../AI/ai_v6.js';
+    import { AIV7 } from '../AI/ai_v7.js';
+
+    const chess = new ChessEngine();
+    const render = new ChessRender(chess);
+
+    const depth = 2;
+
+    // const AI1W = new AIV1(chess, true, depth);
+    // const AI1B = new AIV1(chess, false, depth);
+    // const AI2W = new AIV2(chess, true, depth);
+    // const AI2B = new AIV2(chess, false, depth);
+    // const AI3W = new AIV3(chess, true, depth);
+    // const AI3B = new AIV3(chess, false, depth);
+    // const AI4W = new AIV4(chess, true, depth);
+    // const AI4B = new AIV4(chess, false, depth);
+    // const AI5W = new AIV5(chess, true, depth);
+    // const AI5B = new AIV5(chess, false, depth);
+    const AI6W = new AIV6(chess, true, depth);
+    // const AI6B = new AIV6(chess, false, depth);
+    // const AI7W = new AIV7(chess, true, depth);
+    const AI7B = new AIV7(chess, false, 10);
+
+    window.onload = async (e) => {
+        render.BeginPlay();
+
+        await delay(1000);
+
+        if (chess.turn == 0 && chess.whiteAI) chess.whiteAI?.Play();
+        if (chess.turn == 1 && chess.blackAI) chess.blackAI?.Play();
+    };
+</script>
+
+</html>

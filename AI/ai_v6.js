@@ -200,7 +200,7 @@ export class AIV6 {
         const moves = this.engine.getPlayerLegalMoves(this.engine.turn === 0);
             if (moves.length === 0) return null;
 
-        const copy = this.engine.minimalClone();
+        const copy = this.engine.clone();
 
         // Order moves
         moves.sort((a, b) => this.scoreMove(copy, b, depth) - this.scoreMove(copy, a, depth));

@@ -53,7 +53,7 @@ export class AIV3 {
         let bestMove = null;
 
         for (const move of moves) {
-            const copy = engine.minimalClone();
+            const copy = engine.clone();
             copy.MovePiece(move.fr, move.fc, move.tr, move.tc, move.promote);
 
             const score = -this.minimax(copy, depth - 1, -Infinity, Infinity);
@@ -84,7 +84,7 @@ export class AIV3 {
         let best = -Infinity;
 
         for (const move of moves) {
-            const copy = engineState.minimalClone();
+            const copy = engineState.clone();
             copy.MovePiece(move.fr, move.fc, move.tr, move.tc, move.promote);
 
             let tactical = 0;

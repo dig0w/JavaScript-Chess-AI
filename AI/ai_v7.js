@@ -207,7 +207,7 @@ export class AIV7 {
             }
 
             // Clone the engine for this iteration so minimax/Move/undo operate safely
-            const copy = this.engine.minimalClone();
+            const copy = this.engine.clone();
 
             // If TT contains a best move for root position, try to use it first by ordering moves.
             // We'll still generate all moves, but we will place prevBestMove first to improve cutoffs.

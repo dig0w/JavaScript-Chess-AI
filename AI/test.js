@@ -47,7 +47,7 @@ export class Test {
 
         const startTime = performance.now();
 
-        const copy = this.engine.minimalClone();
+        const copy = this.engine.clone();
 
         copy.MovePiece(move.fr, move.fc, move.tr, move.tc, move.promote);
 
@@ -63,7 +63,7 @@ export class Test {
             "tc": 2,
             "promote": null
         };
-        const copy = this.engine.minimalClone();
+        const copy = this.engine.clone();
 
         const startTime = performance.now();
 
@@ -83,7 +83,7 @@ export class Test {
             "tc": 2,
             "promote": null
         };
-        const copy = this.engine.minimalClone();
+        const copy = this.engine.clone();
 
         const startTime1 = performance.now();
 

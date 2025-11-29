@@ -117,7 +117,7 @@ export class AIV5 {
         const engine = this.engine;
         const moves = engine.getPlayerLegalMoves(engine.turn === 0);
 
-        const copy = engine.minimalClone();
+        const copy = engine.clone();
 
         // Move ordering: sort moves by heuristic
         moves.sort((a, b) => this.scoreMove(copy, b) - this.scoreMove(copy, a));
@@ -180,7 +180,7 @@ export class AIV5 {
             engineState.MovePiece(move.fr, move.fc, move.tr, move.tc, move.promote);
             this.moveCount++;
 
-            // const copy = engineState.minimalClone();
+            // const copy = engineState.clone();
             // copy.MovePiece(move.fr, move.fc, move.tr, move.tc, move.promote);
 
             let tactical = 0;
