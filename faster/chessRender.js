@@ -102,6 +102,7 @@ export class ChessRender {
         });
     }
 
+
     UpdateSquare(row, col) {
         const sq = this.boardEl.querySelector(`.square[data-row="${row}"][data-col="${col}"]`);
             if (!sq) return;
@@ -200,6 +201,23 @@ export class ChessRender {
         }
     }
 
+    AddToLog() {
+        const notaion = this.engine.getMoveNotation(this.engine.logs[this.engine.logs.length - 1]);
+            if (notaion == '' || !notaion) return;
+
+        const li = document.createElement('li');
+        li.textContent = notaion;
+
+        this.logDisplay.appendChild(li);
+
+        this.logDisplay.scrollTop = this.logDisplay.scrollHeight;
+    }
+
+    RemoveFromLog() {
+        this.logDisplay.children[this.logDisplay.children.length - 1].remove();
+    }
+
+
     onSquareClick(e) {
         // Case 0: not his turn -> deselect
         if ((this.engine.turn == 0 && this.engine.whiteAI != null) || (this.engine.turn == 1 && this.engine.blackAI != null)) {
@@ -272,6 +290,7 @@ export class ChessRender {
 
         this.highlightMoves(row, col);
     }
+
     onSquareBlur(e) {
         this.blurredTime = new Date();
     }
@@ -291,9 +310,11 @@ export class ChessRender {
             if (sq) sq.classList.add('highlight');
         });
     }
+
     desHighlightMoves() {
         document.querySelectorAll('.highlight').forEach(sq => sq.classList.remove('highlight'));
     }
+
 
     async Promote(fr, fc, tr, tc) {
         this.promotionScreen.classList.remove('black');
@@ -316,6 +337,7 @@ export class ChessRender {
         const first = this.promotionScreen.querySelector('[data-piece]');
         if (first) first.focus();
     }
+
     onPromoClick(e) {
         const newPiece = e.target.dataset.piece;
             if (!newPiece) return;
@@ -328,9 +350,11 @@ export class ChessRender {
         this.promotionScreen.classList.add('hidden');
         e.target.blur();
     }
+
     onPromoBlur(e) {
         this.blurredTime = new Date();
     }
+
 
     PlaySound(type = 0) {
         this.playableSounds[type].play();

@@ -291,6 +291,7 @@ export class ChessEngine {
             this.renderer.UpdateSquare(fr, fc);
             this.renderer.UpdateSquare(tr, tc);
             this.renderer.UpdateGame();
+            this.renderer.AddToLog();
 
             if (promotePiece) return this.renderer.PlaySound(3);
             else if (this.renderer.whiteKingChecked || this.renderer.blackKingChecked) return this.renderer.PlaySound(2);
@@ -448,6 +449,7 @@ export class ChessEngine {
             this.renderer.UpdateSquare(fr, fc);
             this.renderer.UpdateSquare(tr, tc);
             this.renderer.UpdateGame();
+            this.renderer.RemoveFromLog();
 
             if (promotePiece) return this.renderer.PlaySound(3);
             else if (this.renderer.whiteKingChecked || this.renderer.blackKingChecked) return this.renderer.PlaySound(2);
@@ -802,6 +804,80 @@ export class ChessEngine {
         }
 
         return '.';
+    }
+
+
+    getMoveNotation(fullMove) {
+        if (!fullMove) return;
+
+        const {
+            fr, fc, tr, tc,
+            originalPiece,
+            targetPiece,
+            promotePiece,
+
+            castle,
+            isEnPassantCapture
+        } = fullMove;
+
+        let notation = '';
+
+        // Handle castling first
+        if (castle === 1) {
+            // King-side castling
+            notation = 'O-O';
+        } else if (castle === 2) {
+            // Queen-side castling
+            notation = 'O-O-O';
+        } else {
+            const squareName = (r, c) => {
+                const file = String.fromCharCode('a'.charCodeAt(0) + c);
+                const rank = (this.rows - r).toString();
+                return file + rank;
+            }
+
+            let pieceLetter = originalPiece.toLowerCase() === 'p' ? '' : originalPiece.toUpperCase();
+
+            // Capture?
+            const isCapture = !this.isEmpty(targetPiece);
+
+            // Origin + dest square names
+            const fromSq = squareName(fr, fc);
+            const toSq = squareName(tr, tc);
+
+            // Build notation
+            if (pieceLetter) notation += pieceLetter;
+
+            // Pawn captures show file of origin
+            if (!pieceLetter && isCapture) {
+                const file = String.fromCharCode('a'.charCodeAt(0) + fc);
+                notation += file;
+            }
+
+            if (isCapture) notation += 'x';
+
+            notation += toSq;
+
+            // Promotion
+            if (promotePiece) {
+                notation += '=' + promotePiece.toUpperCase();
+            }
+            if (isEnPassantCapture) {
+                notation += ' e.p.';
+            }
+        }
+
+        // Check / mate
+        const whiteToMove = this.turn === 0;
+        const opponentIsWhite = !whiteToMove;
+
+        const oppInCheck = this.isKingInCheck(opponentIsWhite);
+        const oppLegalMoves = this.hasLegalMoves(opponentIsWhite);
+
+        if (!notation.startsWith('O-O') && oppInCheck && !oppLegalMoves) notation += '#';
+        else if (!notation.startsWith('O-O') && oppInCheck && oppLegalMoves) notation += '+';
+
+        return notation;
     }
 
 
