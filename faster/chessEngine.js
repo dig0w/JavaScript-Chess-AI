@@ -98,6 +98,7 @@ export class ChessEngine {
 
         // Get pieces
         const originalPiece = this.getPiece(fr, fc);
+            if (this.isEmpty(originalPiece)) return;
         const isWhite = this.isWhite(originalPiece);
         const isPawn = originalPiece.toLowerCase() === 'p';
 
@@ -662,9 +663,10 @@ export class ChessEngine {
     }
 
     isKingInCheck(isWhite) {
-        const { r, c } = this.getKing(isWhite);
+        const king = this.getKing(isWhite);
+            if (!king) return true;
 
-        return this.isSquareAttacked(r, c, isWhite);
+        return this.isSquareAttacked(king.r, king.c, isWhite);
     }
 
     moveKeepsKingSafe(fr, fc, tr, tc) {
