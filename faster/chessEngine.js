@@ -85,6 +85,7 @@ export class ChessEngine {
 
         this.gameCondition = 'PLAYING';
         this.logs = [];
+        this.totalPlies = 0;
 
         this.whiteAI = null;
         this.blackAI = null;
@@ -146,7 +147,6 @@ export class ChessEngine {
             
             if (!this.isEmpty(targetPiece)) {
                 this.zobrist.xorPiece(targetPiece, capRow, tc);
-                console.log(tr, tc, epr, epc, targetPiece, capRow, tc);
                 this.pieces[targetPiece].clearBit(this.toSq(capRow, tc));
                 
                 isEnPassantCapture = true;
@@ -250,6 +250,7 @@ export class ChessEngine {
             gameCondition: this.gameCondition,
             turn: this.turn
         });
+        this.totalPlies++;
 
         // Game condition
         const result = this.evaluateEndConditions();
@@ -311,6 +312,7 @@ export class ChessEngine {
     undoMove() {
         if (this.logs.length === 0) return;
 
+        this.totalPlies--;
         const lastMove = this.logs.pop();
 
         const {
@@ -935,9 +937,13 @@ export class ChessEngine {
         clone.occupiedBlack = this.occupiedBlack.clone();
         clone.occupied = this.occupied.clone();
 
+        clone.zobrist = this.zobrist.clone();
+        clone.repetitionCount = new Map(this.repetitionCount);
+        
         clone.turn = this.turn;
-
         clone.gameCondition = this.gameCondition;
+
+        clone.totalPlies = this.totalPlies;
 
         return clone;
     }

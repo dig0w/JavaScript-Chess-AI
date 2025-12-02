@@ -191,7 +191,7 @@ export class AIV8 {
 
         // Move ordering: sort moves by heuristic
         moves.sort((a, b) => this.scoreMove(copy, b, depth) - this.scoreMove(copy, a, depth));
-        
+
         for (let i = 0; i < moves.length; i++) {
             const move = moves[i];
 
@@ -204,13 +204,13 @@ export class AIV8 {
             } else {
                 // PVS: narrow window first
                 score = -this.minimax(copy, depth - 1, -alpha - 1, -alpha);
-
+                
                 // If it fails, research with full window
                 if (score > alpha) {
                     score = -this.minimax(copy, depth - 1, -beta, -alpha);
                 }
             }
-
+            
             copy.undoMove();
 
             if (score > alpha) {
@@ -226,6 +226,23 @@ export class AIV8 {
 
     minimax(engineState, depth, alpha, beta) {
         this.nodes++;
+
+        const alphaOrig = alpha;
+
+        // Zobrist key
+        const key = engineState.zobrist.hash;
+
+        // Check TT
+        if (this.TT.has(key)) {
+            const entry = this.TT.get(key);
+
+            if (entry.depth >= depth) {
+                if (entry.flag === 'EXACT') return entry.value;
+                if (entry.flag === 'LOWERBOUND') alpha = Math.max(alpha, entry.value);
+                if (entry.flag === 'UPPERBOUND') beta = Math.min(beta, entry.value);
+                if (alpha >= beta) return entry.value;
+            }
+        }
 
         // Terminal condition
         if (depth === 0 || engineState.gameCondition !== 'PLAYING') {
@@ -251,6 +268,7 @@ export class AIV8 {
         moves.sort((a, b) => this.scoreMove(engineState, b, depth) - this.scoreMove(engineState, a, depth));
 
         let best = -Infinity;
+        let bestMove = null;
 
         for (const move of moves) {
             const targetBefore = engineState.getPiece(move.tr, move.tc);
@@ -264,7 +282,10 @@ export class AIV8 {
 
             engineState.undoMove();
 
-            if (score > best) best = score;
+            if (score > best) {
+                best = score;
+                bestMove = move;
+            }
             if (score > alpha) alpha = score;
 
             if (alpha >= beta) {
@@ -288,6 +309,13 @@ export class AIV8 {
             }
         }
 
+        // Store in TT
+        let flag = 'EXACT';
+        if (best <= alphaOrig) flag = 'UPPERBOUND';
+        else if (best >= beta) flag = 'LOWERBOUND';
+
+        this.TT.set(key, { value: best, depth, flag, bestMove });
+
         return best;
     }
 
@@ -308,7 +336,7 @@ export class AIV8 {
         // 2. Promotions
         if (move.promote) score += 2000;
 
-        // 5. Killer move
+        // 3. Killer move
         const km = this.killerMoves[depthKey];
         if (km) {
             for (let i = 0; i < km.length; i++) {
@@ -319,7 +347,7 @@ export class AIV8 {
             }
         }
 
-        // 6. History heuristic
+        // 4. History heuristic
         if (engineState.isEmpty(target) && !move.promote) {
             const fromIdx = move.fr * engineState.cols + move.fc;
             const toIdx = move.tr * engineState.cols + move.tc;
@@ -348,11 +376,7 @@ export class AIV8 {
         moves.sort((a, b) => this.scoreMove(engineState, b) - this.scoreMove(engineState, a));
 
         for (const move of moves) {
-            try {
-                engineState.MovePiece(move.fr, move.fc, move.tr, move.tc, move.promote);
-            } catch (error) {
-                console.log(move);
-            }
+            engineState.MovePiece(move.fr, move.fc, move.tr, move.tc, move.promote);
 
             const score = -this.quiescence(engineState, -beta, -alpha, qDepth + 1);
 
@@ -453,10 +477,8 @@ export class AIV8 {
         const blackMoves = engineState.getPlayerLegalMoves(false).length;
         score += (whiteMoves - blackMoves) * 5;
 
-        // Game-ending states
-        if (engineState.gameCondition.startsWith('WHITE_WIN')) score += 999999 - engineState.totalPlies * 50;
-        else if (engineState.gameCondition.startsWith('BLACK_WIN')) score += -999999 + engineState.totalPlies * 50;
-        else if (engineState.gameCondition.startsWith('DRAW')) score += -500000;
+        // Discourage long games
+        score -= engineState.totalPlies * 2;
 
         return engineState.turn === 0 ? score : -score;
     }

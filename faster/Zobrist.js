@@ -57,4 +57,22 @@ export class Zobrist {
     xorTurn() {
         this.hash ^= this.turn;
     }
+
+    clone() {
+        const copy = new Zobrist();
+
+        for (const key of Object.keys(this.piece)) {
+            copy.piece[key] = this.piece[key].slice();
+        }
+
+        // Deep copy arrays
+        copy.castle = this.castle.slice();
+        copy.ep = this.ep.slice();
+
+        // Copy primitive fields
+        copy.turn = this.turn;
+        copy.hash = this.hash;
+
+        return copy;
+    }
 }
