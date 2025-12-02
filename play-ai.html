@@ -84,26 +84,26 @@
     import { delay } from './utils.js';
     import { ChessEngine } from './chessEngine.js';
     import { ChessRender } from './chessRender.js';
-    import { AIV7 } from './AI/ai_v7.js';
+    import { AIV6 } from './AI/ai_v6.js';
 
     const chess = new ChessEngine();
     const render = new ChessRender(chess);
 
     let white = true;
     let AI = null;
-    const depth = 10;
+    const depth = 2;
     
     const params = new URLSearchParams(window.location.search);
     if (params.get('play') === 'black') {
         document.getElementById('switchside-btn').textContent = 'Play White';
 
         white = false;
-        AI = new AIV7(chess, true, depth);
+        AI = new AIV6(chess, true, depth);
     } else {
         document.getElementById('switchside-btn').textContent = 'Play Black';
 
         white = true;
-        AI = new AIV7(chess, false, depth);
+        AI = new AIV6(chess, false, depth);
     }
 
     window.onload = async (e) => {

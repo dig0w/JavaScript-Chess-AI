@@ -142,11 +142,14 @@ export class ChessEngine {
         if (isPawn && prevEnPassant !== -1 && tr === epr && tc === epc && !isCapture) {
             const capRow = isWhite ? tr + 1 : tr - 1;
             targetPiece = this.getPiece(capRow, tc);
-
-            this.zobrist.xorPiece(targetPiece, capRow, tc);
-            this.pieces[targetPiece].clearBit(this.toSq(capRow, tc));
             
-            isEnPassantCapture = true;
+            if (!this.isEmpty(targetPiece)) {
+                this.zobrist.xorPiece(targetPiece, capRow, tc);
+                console.log(tr, tc, epr, epc, targetPiece, capRow, tc);
+                this.pieces[targetPiece].clearBit(this.toSq(capRow, tc));
+                
+                isEnPassantCapture = true;
+            };
         }
 
         // Castling
