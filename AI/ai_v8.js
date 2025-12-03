@@ -1,4 +1,5 @@
 import { delay } from '../utils.js';
+import { ChessEngine } from '../faster/chessEngine.js';
 
 export class AIV8 {
     constructor(engine, playsWhite = false, depth = 2) {
@@ -11,134 +12,134 @@ export class AIV8 {
         else engine.blackAI = this;
 
         // Material values
-        this.mgValues = { P: 100, N: 320, B: 330, R: 500, Q: 900, K: 0 };
-        this.egValues = { P: 120, N: 310, B: 330, R: 510, Q: 920, K: 0 };
+        this.mgValues = { P: 100, N: 320, B: 330, R: 500, Q: 900, K: 20000 };
+        this.egValues = { P: 120, N: 310, B: 330, R: 510, Q: 920, K: 20000 };
 
         this.phaseWeight = { P: 0, N: 1, B: 1, R: 2, Q: 4, K: 0 };
 
         // Piece-square tables
         this.mgPst = {
             P: [
-                 0,  0,   0,   0,   0,   0,  0,  0,
-                50, 50,  50,  50,  50,  50, 50, 50,
-                10, 10,  20,  30,  30,  20, 10, 10,
-                 5,  5,  10,  25,  25,  10,  5,  5,
-                 0,  0,   0,  20,  20,   0,  0,  0,
-                 5, -5, -10,   0,   0, -10, -5,  5,
-                 5, 10,  10, -20, -20,  10, 10,  5,
-                 0,  0,   0,   0,   0,   0,  0,  0
+                0, 0, 0, 0, 0, 0, 0, 0,
+                5, 10, 10, -20, -20, 10, 10, 5,
+                5, -5, -10, 0, 0, -10, -5, 5,
+                0, 0, 0, 20, 20, 0, 0, 0,
+                5, 5, 10, 25, 25, 10, 5, 5,
+                10, 10, 20, 30, 30, 20, 10, 10,
+                50, 50, 50, 50, 50, 50, 50, 50,
+                0, 0, 0, 0, 0, 0, 0, 0
             ],
             N: [
-                -50, -40, -30, -30, -30, -30, -40, -50,
-                -40, -20,   0,   0,   0,   0, -20, -40,
-                -30,   0,  10,  15,  15,  10,   0, -30,
-                -30,   5,  15,  20,  20,  15,   5, -30,
-                -30,   0,  15,  20,  20,  15,   0, -30,
-                -30,   5,  10,  15,  15,  10,   5, -30,
-                -40, -20,   0,   5,   5,   0, -20, -40,
-                -50, -40, -30, -30, -30, -30, -40, -50
+                -50,-40,-30,-30,-30,-30,-40,-50,
+                -40,-20, 0, 5, 5, 0,-20,-40,
+                -30, 5,10,15,15,10, 5,-30,
+                -30, 0,15,20,20,15, 0,-30,
+                -30, 5,15,20,20,15, 5,-30,
+                -30, 0,10,15,15,10, 0,-30,
+                -40,-20, 0, 0, 0, 0,-20,-40,
+                -50,-40,-30,-30,-30,-30,-40,-50
             ],
             B: [
-                -20, -10, -10, -10, -10, -10, -10, -20,
-                -10,   5,   0,   0,   0,   0,   5, -10,
-                -10,  10,  10,  10,  10,  10,  10, -10,
-                -10,   0,  10,  10,  10,  10,   0, -10,
-                -10,   5,   5,  10,  10,   5,   5, -10,
-                -10,   0,   5,  10,  10,   5,   0, -10,
-                -10,   0,   0,   0,   0,   0,   0, -10,
-                -20, -10, -10, -10, -10, -10, -10, -20
+                -20,-10,-10,-10,-10,-10,-10,-20,
+                -10, 0, 0, 0, 0, 0, 0,-10,
+                -10, 0, 5,10,10, 5, 0,-10,
+                -10, 5, 5,10,10, 5, 5,-10,
+                -10, 0,10,10,10,10, 0,-10,
+                -10,10,10,10,10,10,10,-10,
+                -10, 5, 0, 0, 0, 0, 5,-10,
+                -20,-10,-10,-10,-10,-10,-10,-20
             ],
             R: [
-                 0,  0,  0,  0,  0,  0,  0,  0,
-                -5,  0,  0,  0,  0,  0,  0, -5,
-                -5,  0,  0,  0,  0,  0,  0, -5,
-                -5,  0,  0,  0,  0,  0,  0, -5,
-                -5,  0,  0,  0,  0,  0,  0, -5,
-                -5,  0,  0,  0,  0,  0,  0, -5,
-                 5, 10, 10, 10, 10, 10, 10,  5,
-                 0,  0,  0, 10, 10, 10,  0,  0
+                0,0,0,0,0,0,0,0,
+                5,10,10,10,10,10,10,5,
+                -5,0,0,0,0,0,0,-5,
+                -5,0,0,0,0,0,0,-5,
+                -5,0,0,0,0,0,0,-5,
+                -5,0,0,0,0,0,0,-5,
+                -5,0,0,0,0,0,0,-5,
+                0,0,0,5,5,0,0,0
             ],
             Q: [
-                -20, -10, -10, -5, -5, -10, -10, -20,
-                -10,   0,   5,  0,  0,   0,   0, -10,
-                -10,   0,   0,  0,  0,   0,   0, -10,
-                  0,   0,   5,  5,  5,   5,   0,  -5,
-                 -5,   0,   5,  5,  5,   5,   0,  -5,
-                -10,   5,   5,  5,  5,   5,   0, -10,
-                -10,   0,   5,  5,  5,   5,   0, -10,
-                -20, -10, -10, -5, -5, -10, -10, -20
+                -20,-10,-10,-5,-5,-10,-10,-20,
+                -10,0,0,0,0,0,0,-10,
+                -10,0,5,5,5,5,0,-10,
+                -5,0,5,5,5,5,0,-5,
+                0,0,5,5,5,5,0,-5,
+                -10,5,5,5,5,5,0,-10,
+                -10,0,5,0,0,0,0,-10,
+                -20,-10,-10,-5,-5,-10,-10,-20
             ],
             K: [
-                -30, -40, -40, -50, -50, -40, -40, -30,
-                -30, -40, -40, -50, -50, -40, -40, -30,
-                -30, -40, -40, -50, -50, -40, -40, -30,
-                -30, -40, -40, -50, -50, -40, -40, -30,
-                -20, -30, -30, -40, -40, -30, -30, -20,
-                -10, -20, -20, -20, -20, -20, -20, -10,
-                 20,  20,   0,   0,   0,   0,  20,  20,
-                 20,  30,  10,   0,   0,  10,  30,  20
+                -30,-40,-40,-50,-50,-40,-40,-30,
+                -30,-40,-40,-50,-50,-40,-40,-30,
+                -30,-40,-40,-50,-50,-40,-40,-30,
+                -30,-40,-40,-50,-50,-40,-40,-30,
+                -20,-30,-30,-40,-40,-30,-30,-20,
+                -10,-20,-20,-20,-20,-20,-20,-10,
+                20, 20, 0, 0, 0, 0, 20, 20,
+                20, 30, 10, 0, 0, 10, 30, 20
             ]
         };
         this.egPst = {
             P: [
-                 0,  0,   0,   0,   0,   0,  0,  0,
-                50, 50,  50,  50,  50,  50, 50, 50,
-                10, 10,  20,  30,  30,  20, 10, 10,
-                 5,  5,  10,  25,  25,  10,  5,  5,
-                 0,  0,   0,  20,  20,   0,  0,  0,
-                 5, -5, -10,   0,   0, -10, -5,  5,
-                 5, 10,  10, -20, -20,  10, 10,  5,
-                 0,  0,   0,   0,   0,   0,  0,  0
+                0, 0, 0, 0, 0, 0, 0, 0,
+                10, 10, 10, 10, 10, 10, 10, 10,
+                5, 5, 5, 5, 5, 5, 5, 5,
+                0, 0, 0, 10, 10, 0, 0, 0,
+                0, 0, 0, 20, 20, 0, 0, 0,
+                5, 5, 5, 30, 30, 5, 5, 5,
+                10, 10, 10, 50, 50, 10, 10, 10,
+                0, 0, 0, 0, 0, 0, 0, 0
             ],
             N: [
-                -50, -40, -30, -30, -30, -30, -40, -50,
-                -40, -20,   0,   0,   0,   0, -20, -40,
-                -30,   0,  10,  15,  15,  10,   0, -30,
-                -30,   5,  15,  20,  20,  15,   5, -30,
-                -30,   0,  15,  20,  20,  15,   0, -30,
-                -30,   5,  10,  15,  15,  10,   5, -30,
-                -40, -20,   0,   5,   5,   0, -20, -40,
-                -50, -40, -30, -30, -30, -30, -40, -50
+                -40,-30,-20,-20,-20,-20,-30,-40,
+                -30,-10, 0, 5, 5, 0,-10,-30,
+                -20, 5,10,15,15,10, 5,-20,
+                -20, 0,15,20,20,15, 0,-20,
+                -20, 5,15,20,20,15, 5,-20,
+                -20, 0,10,15,15,10, 0,-20,
+                -30,-10, 0, 0, 0, 0,-10,-30,
+                -40,-30,-20,-20,-20,-20,-30,-40
             ],
             B: [
-                -20, -10, -10, -10, -10, -10, -10, -20,
-                -10,   5,   0,   0,   0,   0,   5, -10,
-                -10,  10,  10,  10,  10,  10,  10, -10,
-                -10,   0,  10,  10,  10,  10,   0, -10,
-                -10,   5,   5,  10,  10,   5,   5, -10,
-                -10,   0,   5,  10,  10,   5,   0, -10,
-                -10,   0,   0,   0,   0,   0,   0, -10,
-                -20, -10, -10, -10, -10, -10, -10, -20
+                -20,-10,-10,-10,-10,-10,-10,-20,
+                -10, 0, 0, 0, 0, 0, 0,-10,
+                -10, 0, 5,10,10, 5, 0,-10,
+                -10, 0,10,15,15,10, 0,-10,
+                -10, 0,10,15,15,10, 0,-10,
+                -10, 5,10,10,10,10, 5,-10,
+                -10, 0, 0, 0, 0, 0, 0,-10,
+                -20,-10,-10,-10,-10,-10,-10,-20
             ],
             R: [
-                 0,  0,  0,  0,  0,  0,  0,  0,
-                -5,  0,  0,  0,  0,  0,  0, -5,
-                -5,  0,  0,  0,  0,  0,  0, -5,
-                -5,  0,  0,  0,  0,  0,  0, -5,
-                -5,  0,  0,  0,  0,  0,  0, -5,
-                -5,  0,  0,  0,  0,  0,  0, -5,
-                 5, 10, 10, 10, 10, 10, 10,  5,
-                 0,  0,  0, 10, 10, 10,  0,  0
+                0,0,0,5,5,0,0,0,
+                -5,0,0,0,0,0,0,-5,
+                -5,0,0,0,0,0,0,-5,
+                -5,0,0,0,0,0,0,-5,
+                -5,0,0,0,0,0,0,-5,
+                -5,0,0,0,0,0,0,-5,
+                5,10,10,10,10,10,10,5,
+                0,0,0,0,0,0,0,0
             ],
             Q: [
-                -20, -10, -10, -5, -5, -10, -10, -20,
-                -10,   0,   5,  0,  0,   0,   0, -10,
-                -10,   0,   0,  0,  0,   0,   0, -10,
-                  0,   0,   5,  5,  5,   5,   0,  -5,
-                 -5,   0,   5,  5,  5,   5,   0,  -5,
-                -10,   5,   5,  5,  5,   5,   0, -10,
-                -10,   0,   5,  5,  5,   5,   0, -10,
-                -20, -10, -10, -5, -5, -10, -10, -20
+                -20,-10,-10,-5,-5,-10,-10,-20,
+                -10,0,0,0,0,0,0,-10,
+                -10,0,5,5,5,5,0,-10,
+                -5,0,5,5,5,5,0,-5,
+                -5,0,5,5,5,5,0,-5,
+                -10,5,5,5,5,5,0,-10,
+                -10,0,5,0,0,0,0,-10,
+                -20,-10,-10,-5,-5,-10,-10,-20
             ],
             K: [
-                -30, -40, -40, -50, -50, -40, -40, -30,
-                -30, -40, -40, -50, -50, -40, -40, -30,
-                -30, -40, -40, -50, -50, -40, -40, -30,
-                -30, -40, -40, -50, -50, -40, -40, -30,
-                -20, -30, -30, -40, -40, -30, -30, -20,
-                -10, -20, -20, -20, -20, -20, -20, -10,
-                 20,  20,   0,   0,   0,   0,  20,  20,
-                 20,  30,  10,   0,   0,  10,  30,  20
+                -50,-40,-30,-20,-20,-30,-40,-50,
+                -40,-20,-10,0,0,-10,-20,-40,
+                -30,-10,20,30,30,20,-10,-30,
+                -20,0,30,40,40,30,0,-20,
+                -20,0,30,40,40,30,0,-20,
+                -30,-10,20,30,30,20,-10,-30,
+                -40,-20,-10,0,0,-10,-20,-40,
+                -50,-40,-30,-20,-20,-30,-40,-50
             ]
         };
 
@@ -165,7 +166,7 @@ export class AIV8 {
 
         this.nodes = 0;
 
-        const best = this.bestMove(this.depth, 5000);
+        const best = this.bestMove(this.depth, 2000);
             if (!best) return;
 
         this.totalNodes += this.nodes;
@@ -176,63 +177,95 @@ export class AIV8 {
         this.engine.MovePiece(best.fr, best.fc, best.tr, best.tc, best.promote);
     }
 
-    bestMove(depth) {
-        const engineState = this.engine;
-
-        const moves = engineState.getPlayerLegalMoves(engineState.turn === 0);
-            if (moves.length === 0) return null;
+    bestMove(maxDepth, timeLimitMs = null) {
+        const startTime = Date.now();
+        let deadline = timeLimitMs ? (startTime + timeLimitMs) : null;
 
         let bestMove = null;
+        let bestScore = -Infinity;
 
-        let alpha = -Infinity;
-        let beta = Infinity;
-        
-        const copy = engineState.clone();
+        const copy = this.engine.clone();
 
-        // Move ordering: sort moves by heuristic
-        moves.sort((a, b) => this.scoreMove(copy, b, depth) - this.scoreMove(copy, a, depth));
+        for (let d = 1; d <= maxDepth; d++) {
+            if (deadline && Date.now() > deadline) {
+                console.log(`Stopping ID at depth ${d-1} due to time limit`);
+                break;
+            }
 
-        for (let i = 0; i < moves.length; i++) {
-            const move = moves[i];
+            const moves = copy.getPlayerLegalMoves(copy.turn === 0);
+                if (moves.length === 0) return null;
 
-            copy.MovePiece(move.fr, move.fc, move.tr, move.tc, move.promote);
-            
-            let score;
-            if (i === 0) {
-                // Full window search for first move
-                score = -this.minimax(copy, depth - 1, -beta, -alpha);
-            } else {
-                // PVS: narrow window first
-                score = -this.minimax(copy, depth - 1, -alpha - 1, -alpha);
-                
-                // If it fails, research with full window
-                if (score > alpha) {
-                    score = -this.minimax(copy, depth - 1, -beta, -alpha);
+            // Move ordering
+            moves.sort((a, b) => this.scoreMove(copy, b, d) - this.scoreMove(copy, a, d));
+
+            if (bestMove) {
+                const idx = moves.findIndex(m => m.fr === bestMove.fr && m.fc === bestMove.fc &&
+                                                m.tr === bestMove.tr && m.tc === bestMove.tc &&
+                                                (m.promote || null) === (bestMove.promote || null));
+                if (idx > 0) {
+                    const b = moves.splice(idx, 1)[0];
+                    moves.unshift(b);
                 }
             }
-            
-            copy.undoMove();
 
-            if (score > alpha) {
-                alpha = score;
-                bestMove = move;
+            let alpha = -Infinity;
+            let beta = Infinity;
+            let localBestMove = null;
+            let localBestScore = -Infinity;
+
+            for (let i = 0; i < moves.length; i++) {
+                const m = moves[i];
+
+                copy.MovePiece(m.fr, m.fc, m.tr, m.tc, m.promote);
+
+                const newMoves = copy.getPlayerLegalMoves(copy.turn === 0);
+
+                let score;
+                if (i === 0) {
+                    // full-window for the first move
+                    score = -this.minimax(copy, d - 1, -beta, -alpha, newMoves);
+                } else {
+                    // narrow-window (PVS)
+                    score = -this.minimax(copy, d - 1, -alpha - 1, -alpha, newMoves);
+                    if (score > alpha) {
+                        // research with full window
+                        score = -this.minimax(copy, d - 1, -beta, -alpha, newMoves);
+                    }
+                }
+
+                copy.undoMove();
+
+                if (score > localBestScore) {
+                    localBestScore = score;
+                    localBestMove = m;
+                }
+
+                if (score > alpha) alpha = score;
+
+                if (deadline && Date.now() > deadline) {
+                    console.log(`Time exceeded during root move loop at depth ${d}`);
+                    break;
+                }
             }
+
+            if (!deadline || Date.now() <= deadline) {
+                bestMove = localBestMove;
+                bestScore = localBestScore;
+            } else break;
         }
 
-        console.log('Best move:', bestMove, alpha);
+        console.log('Best move:', bestMove, bestScore);
 
         return bestMove;
     }
 
-    minimax(engineState, depth, alpha, beta) {
+    minimax(engineState, depth, alpha, beta, newMoves = null) {
         this.nodes++;
 
         const alphaOrig = alpha;
 
-        // Zobrist key
-        const key = engineState.zobrist.hash;
-
         // Check TT
+        const key = engineState.zobrist.hash;
         if (this.TT.has(key)) {
             const entry = this.TT.get(key);
 
@@ -246,7 +279,6 @@ export class AIV8 {
 
         // Terminal condition
         if (depth === 0 || engineState.gameCondition !== 'PLAYING') {
-            // Correct terminal scoring
             if (engineState.gameCondition.startsWith('WHITE_WIN'))
                 return (1000000 - engineState.totalPlies * 50) * (this.playsWhite ? -1 : 1);
 
@@ -254,15 +286,15 @@ export class AIV8 {
                 return (-1000000 - engineState.totalPlies * 50) * (this.playsWhite ? -1 : 1);
 
             if (engineState.gameCondition.startsWith('DRAW'))
-                return 500; // draw = neutral
+                return 500;
 
-            // No terminal state? → do QS
             return this.quiescence(engineState, alpha, beta);
         }
 
         // Generate moves
-        const moves = engineState.getPlayerLegalMoves(engineState.turn === 0);
-            if (moves.length === 0) return this.quiescence(engineState, alpha, beta);
+        let moves = newMoves;
+            if (!moves) moves = engineState.getPlayerLegalMoves(engineState.turn === 0);
+        if (moves.length === 0) return this.quiescence(engineState, alpha, beta);
 
         // Order moves
         moves.sort((a, b) => this.scoreMove(engineState, b, depth) - this.scoreMove(engineState, a, depth));
@@ -277,7 +309,6 @@ export class AIV8 {
             engineState.MovePiece(move.fr, move.fc, move.tr, move.tc, move.promote);
 
             const tactical = move.promote ? 900 : 0;
-
             const score = -this.minimax(engineState, depth - 1, -beta, -alpha) + tactical;
 
             engineState.undoMove();
@@ -289,9 +320,11 @@ export class AIV8 {
             if (score > alpha) alpha = score;
 
             if (alpha >= beta) {
-                // Store killer move (up to 2)
+                // Store killer move
                 if (!this.killerMoves[depth]) this.killerMoves[depth] = [];
+
                 const km = this.killerMoves[depth];
+
                 // Avoid duplicates
                 if (!km.some(k => k.fr === move.fr && k.fc === move.fc && k.tr === move.tr && k.tc === move.tc && k.promote === move.promote)) {
                     km.unshift({ fr: move.fr, fc: move.fc, tr: move.tr, tc: move.tc, promote: move.promote });
@@ -372,7 +405,6 @@ export class AIV8 {
 
             if (moves.length === 0) return standPat;
 
-        // Optional: sort captures by MVV-LVA
         moves.sort((a, b) => this.scoreMove(engineState, b) - this.scoreMove(engineState, a));
 
         for (const move of moves) {
@@ -393,77 +425,95 @@ export class AIV8 {
         const rows = engineState.rows;
         const cols = engineState.cols;
 
-        let mg = 0;
-        let eg = 0;
-        let phase = 0;
+        const pieces = engineState.pieces;
+        const occupied = engineState.occupied;
+        const occupiedWhite = engineState.occupiedWhite;
+        const occupiedBlack = engineState.occupiedBlack;
 
-        // Material
-        for (let r = 0; r < rows; r++) {
-            for (let c = 0; c < cols; c++) {
-                const p = engineState.getPiece(r, c);
-                    if (engineState.isEmpty(p)) continue;
+        const mgValues = this.mgValues;
+        const egValues = this.egValues;
+        const mgPst = this.mgPst;
+        const egPst = this.egPst;
+        const phaseWeight = this.phaseWeight;
 
-                const isWhite = engineState.isWhite(p);
-                const type = p.toUpperCase();
+        let mg = 0, eg = 0, phase = 0;
 
+        const order = ['P','N','B','R','Q','K','p','n','b','r','q','k'];
+
+        for (const pc of order) {
+            const bb = pieces[pc].clone();
+                if (!bb) continue;
+
+            const isWhitePiece = (pc === pc.toUpperCase());
+            const typeChar = pc.toUpperCase();
+
+            const mgVal = mgValues[typeChar];
+            const egVal = egValues[typeChar];
+
+            let sq = bb.bitIndex();
+            while (sq >= 0) {
                 // Material
-                const mgVal = this.mgValues[type];
-                const egVal = this.mgValues[type];
-                const mgPst = this.mgPst[type];
-                const egPst = this.egPst[type];
-
-                // PST bonus
-                const whiteSq = engineState.toSq(r, c);
-                const mgValWhite = mgPst[whiteSq];
-                const egValWhite = egPst[whiteSq];
-
-                const blackSq = engineState.toSq(rows - 1 - r, c);
-                const mgValWBlack = mgPst[blackSq];
-                const egValBlack = egPst[blackSq];
-
-                if (isWhite) {
-                    mg += mgVal + mgValWhite;
-                    eg += egVal + egValWhite;
+                if (isWhitePiece) {
+                    mg += mgVal;
+                    eg += egVal;
                 } else {
-                    mg -= mgVal + mgValWBlack;
-                    eg -= egVal + egValBlack;
+                    mg -= mgVal;
+                    eg -= egVal;
+                }
+                
+                // PST
+                if (isWhitePiece) {
+                    mg += mgPst[typeChar][sq];
+                    eg += egPst[typeChar][sq];
+                } else {
+                    const { r, c } = engineState.fromSq(sq);
+                    const mirSq = engineState.toSq(rows - 1 - r, c);
+                    mg -= mgPst[typeChar][mirSq];
+                    eg -= egPst[typeChar][mirSq];
                 }
 
-                if (type == 'P') {
+                if (typeChar === 'P') {
+                    const { r, c } = engineState.fromSq(sq);
+
                     // Pawn promotion proximity
-                    if (isWhite) {
-                        const rank = 7 - r;
-                        const value = Math.pow(rank / (rows - 1), 5);
+                    const progress = isWhitePiece ? (rows - 1 - r) / (rows - 1) : r / (rows - 1);
+                    const promoWeight = Math.pow(progress, 5);
+                    const queenMg = this.mgValues['Q'];
+                    const queenEg = this.egValues['Q'];
 
-                        mg += value * (this.mgValues['Q'] / 1.5);
-                        eg += value * (this.egValues['Q'] - 20);
+                    if (isWhitePiece) {
+                        mg += promoWeight * (queenMg / 1.5);
+                        eg += promoWeight * (queenEg - 20);
                     } else {
-                        const rank = r;
-                        const value = Math.pow(rank / (rows - 1), 5);
-
-                        mg -= value * (this.mgValues['Q'] / 1.5);
-                        eg -= value * (this.egValues['Q'] - 20);
+                        mg -= promoWeight * (queenMg / 1.5);
+                        eg -= promoWeight * (queenEg - 20);
                     }
 
                     // Doubled pawns
-                    let pawnCount = 0;
-                    for (let rr = 0; rr < rows; rr++) {
-                        const sq = engineState.getPiece(rr, c);
-                        if ((isWhite && engineState.isWhite(sq)) || (!isWhite && engineState.isBlack(sq))) pawnCount++;
-                    }
-                    if (pawnCount > 1) {
-                        const penalty = (pawnCount - 1) * 1;
-                        mg += isWhite ? -penalty : penalty;
-                        eg += isWhite ? -penalty : penalty;
+                    const file = sq & (rows - 1);
+                    const pawnsOnFile = bb.popcount32(bb.and(ChessEngine.fileMasks[file]));
+                    if (pawnsOnFile > 1) {
+                        const penalty = (pawnsOnFile - 1) * 5;
+                        if (isWhitePiece) {
+                            mg -= penalty;
+                            eg -= penalty;
+                        } else {
+                            mg += penalty;
+                            eg += penalty;
+                        }
                     }
                 }
 
-                phase += this.phaseWeight[type];
+                phase += phaseWeight[typeChar];
+
+                bb.clearBit(sq);
+                sq = bb.bitIndex();
             }
         }
 
         // Normalize phase (0 = EG, 24 = MG)
         if (phase > 24) phase = 24;
+        if (phase < 0) phase = 0;
 
         // Tapered eval
         let score = (mg * phase + eg * (24 - phase)) / 24;
@@ -476,6 +526,12 @@ export class AIV8 {
         const whiteMoves = engineState.getPlayerLegalMoves(true).length;
         const blackMoves = engineState.getPlayerLegalMoves(false).length;
         score += (whiteMoves - blackMoves) * 5;
+
+        // Castling Rights
+        score += engineState.castlingRights.whiteKingSide ? 5 : -5;
+        score += engineState.castlingRights.whiteQueenSide ? 5 : -5;
+        score += engineState.castlingRights.blackKingSide ? -5 : 5;
+        score += engineState.castlingRights.blackQueenSide ? -5 : 5;
 
         // Discourage long games
         score -= engineState.totalPlies * 2;

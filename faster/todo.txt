@@ -1,3 +1,0 @@
-make ai compatible with new engine
-
-look into magic bitboards

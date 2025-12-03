@@ -10,6 +10,8 @@ export class ChessEngine {
     static queenRays = Array(64);
     static kingMoves = Array(64);
 
+    static fileMasks = Array(8);
+
     static initialized = false;
 
     constructor(board = [
@@ -159,25 +161,29 @@ export class ChessEngine {
             if (tc === 6) { // King-side
                 const rPiece = this.getPiece(tr, 7);
 
-                this.zobrist.xorPiece(rPiece, tr, 7);
+                if (!this.isEmpty(rPiece)) {
+                    this.zobrist.xorPiece(rPiece, tr, 7);
 
-                this.pieces[rPiece].clearBit(this.toSq(tr, 7));
-                this.pieces[rPiece].setBit(this.toSq(tr, 5));
+                    this.pieces[rPiece].clearBit(this.toSq(tr, 7));
+                    this.pieces[rPiece].setBit(this.toSq(tr, 5));
 
-                this.zobrist.xorPiece(rPiece, tr, 5);
+                    this.zobrist.xorPiece(rPiece, tr, 5);
 
-                castle = 1;
+                    castle = 1;
+                }
             } else if (tc === 2) { // Queen-side
                 const rPiece = this.getPiece(tr, 0);
 
-                this.zobrist.xorPiece(rPiece, tr, 0);
+                if (!this.isEmpty(rPiece)) {
+                    this.zobrist.xorPiece(rPiece, tr, 0);
 
-                this.pieces[rPiece].setBit(this.toSq(tr, 3));
-                this.pieces[rPiece].clearBit(this.toSq(tr, 0));
-                
-                this.zobrist.xorPiece(rPiece, tr, 3);
+                    this.pieces[rPiece].setBit(this.toSq(tr, 3));
+                    this.pieces[rPiece].clearBit(this.toSq(tr, 0));
+                    
+                    this.zobrist.xorPiece(rPiece, tr, 3);
 
-                castle = 2;
+                    castle = 2;
+                }
             }
         }
 
@@ -1022,6 +1028,14 @@ export class ChessEngine {
                 if (inBoard(rr, cc)) add(kbb, this.toSq(rr, cc));
             }
             ChessEngine.kingMoves[sq] = kbb;
+        }
+
+        for (let c = 0; c < this.cols; c++) {
+            const bb = new BitBoard();
+            for (let r = 0; r < this.rows; r++) {
+                bb.setBit(this.toSq(r, c));
+            }
+            ChessEngine.fileMasks[c] = bb;
         }
     }
 

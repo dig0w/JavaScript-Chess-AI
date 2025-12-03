@@ -53,3 +53,4 @@ v5   (d=2)        Black Won   107411    46
 v5   (d=4)        Black Won   2830887   82
 v6   (d=2)        Black Won   14057     42
 v6   (d=4)        Black Won   809544    48
+v8   (t=2s)       Black Won   ...       48
