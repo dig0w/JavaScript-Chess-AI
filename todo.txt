@@ -4,3 +4,19 @@ Late Move Reductions (LMR)
 find a way to only calc end eval, when needed
 
 look into magic bitboards
+
+Pawns
+isolated pawns
+backwards pawns
+passed pawns
+
+King
+open files
+pawn protection
+
+trapped/blocked pieces
+hanging pieces
+forks
+pins
+
+center control
