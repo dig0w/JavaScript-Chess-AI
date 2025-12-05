@@ -497,36 +497,48 @@ export class AIV8 {
                     eg -= egPst[typeChar][mirSq];
                 }
 
-                if (typeChar === 'P') {
-                    const { r, c } = engineState.fromSq(sq);
+                switch (typeChar) {
+                    case 'P':
+                        const { r, c } = engineState.fromSq(sq);
 
-                    // Pawn promotion proximity
-                    const progress = isWhitePiece ? (rows - 1 - r) / (rows - 1) : r / (rows - 1);
-                    const promoWeight = Math.pow(progress, 5);
-                    const queenMg = this.mgValues['Q'];
-                    const queenEg = this.egValues['Q'];
+                        // Pawn promotion proximity
+                        const progress = isWhitePiece ? (rows - 1 - r) / (rows - 1) : r / (rows - 1);
+                        const promoWeight = Math.pow(progress, 5);
+                        const queenMg = this.mgValues['Q'];
+                        const queenEg = this.egValues['Q'];
 
-                    if (isWhitePiece) {
-                        mg += promoWeight * (queenMg / 1.5);
-                        eg += promoWeight * (queenEg - 20);
-                    } else {
-                        mg -= promoWeight * (queenMg / 1.5);
-                        eg -= promoWeight * (queenEg - 20);
-                    }
-
-                    // Doubled pawns
-                    const file = sq & (rows - 1);
-                    const pawnsOnFile = bb.popcount32(bb.and(ChessEngine.fileMasks[file]));
-                    if (pawnsOnFile > 1) {
-                        const penalty = (pawnsOnFile - 1) * 5;
                         if (isWhitePiece) {
-                            mg -= penalty;
-                            eg -= penalty;
+                            mg += promoWeight * (queenMg / 1.5);
+                            eg += promoWeight * (queenEg - 20);
                         } else {
-                            mg += penalty;
-                            eg += penalty;
+                            mg -= promoWeight * (queenMg / 1.5);
+                            eg -= promoWeight * (queenEg - 20);
                         }
-                    }
+
+                        // Doubled pawns
+                        const file = sq & (rows - 1);
+                        const pawnsOnFile = bb.popcount32(bb.and(ChessEngine.fileMasks[file]));
+                        if (pawnsOnFile > 1) {
+                            const penalty = (pawnsOnFile - 1) * 5;
+                            if (isWhitePiece) {
+                                mg -= penalty;
+                                eg -= penalty;
+                            } else {
+                                mg += penalty;
+                                eg += penalty;
+                            }
+                        }
+                        break;
+                    case 'N':
+                        break;
+                    case 'B':
+                        break;
+                    case 'R':
+                        break;
+                    case 'Q':
+                        break;
+                    case 'K'
+                        break;
                 }
 
                 phase += phaseWeight[typeChar];
