@@ -134,6 +134,8 @@ export class ChessEngine {
         this.occupiedBlack = this.pieces.p.or(this.pieces.n).or(this.pieces.b).or(this.pieces.r).or(this.pieces.q).or(this.pieces.k);
         this.occupied = this.occupiedWhite.or(this.occupiedBlack);
 
+        this.zobrist.xorTurn();
+
         // Draw rules
         if (isPawn || isCapture) this.halfmoveClock = 0;
         else this.halfmoveClock++;
