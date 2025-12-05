@@ -15,8 +15,8 @@ export class ChessEngine {
     static initialized = false;
 
     constructor(board = [
-        ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
-        ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
+        ['r', 'n', 'b', 'q', 'k', '.', '.', 'r'],
+        ['p', 'p', 'p', 'p', 'p', 'p', 'P', 'p'],
         ['.', '.', '.', '.', '.', '.', '.', '.'],
         ['.', '.', '.', '.', '.', '.', '.', '.'],
         ['.', '.', '.', '.', '.', '.', '.', '.'],
@@ -524,6 +524,19 @@ export class ChessEngine {
 
                     if (Math.abs(epc - fc) === 1 && epr === fr + dir) moves.push([epr, epc, null]);
                 }
+
+                // Promotion
+                const promoteRank = isWhite ? 0 : this.rows - 1;
+                for (let i = 0; i < moves.length; i++) {
+                    if (moves[i][0] == promoteRank && moves[i][2] == null) {
+                        for (const promote of this.promoPieces) {
+                            moves.push([ moves[i][0], moves[i][1], promote ]);
+                        }
+
+                        moves.splice(i, 1);
+                    }
+                }
+
                 break;
             // Knight
             case 'n':

@@ -177,12 +177,19 @@ export class AIV8 {
         this.engine.MovePiece(best.fr, best.fc, best.tr, best.tc, best.promote);
     }
 
+    moveKey(m) {
+        return `${m.fr},${m.fc},${m.tr},${m.tc},${m.promote || 0}`;
+    }
+
     bestMove(maxDepth, timeLimitMs = null) {
         const startTime = Date.now();
         let deadline = timeLimitMs ? (startTime + timeLimitMs) : null;
 
-        let bestMove = null;
-        let bestScore = -Infinity;
+        // Root score table
+        const rootScores = new Map();
+        
+        let globalBestMove = null;
+        let globalBestScore = -Infinity;
 
         const copy = this.engine.clone();
 
@@ -198,23 +205,32 @@ export class AIV8 {
             // Move ordering
             moves.sort((a, b) => this.scoreMove(copy, b, d) - this.scoreMove(copy, a, d));
 
-            if (bestMove) {
-                const idx = moves.findIndex(m => m.fr === bestMove.fr && m.fc === bestMove.fc &&
-                                                m.tr === bestMove.tr && m.tc === bestMove.tc &&
-                                                (m.promote || null) === (bestMove.promote || null));
+            if (globalBestMove) {
+                const idx = moves.findIndex(m => m.fr === globalBestMove.fr && m.fc === globalBestMove.fc &&
+                                                m.tr === globalBestMove.tr && m.tc === globalBestMove.tc &&
+                                                (m.promote || null) === (globalBestMove.promote || null));
                 if (idx > 0) {
-                    const b = moves.splice(idx, 1)[0];
-                    moves.unshift(b);
+                    moves.unshift(moves.splice(idx, 1)[0]);
                 }
             }
 
             let alpha = -Infinity;
             let beta = Infinity;
-            let localBestMove = null;
-            let localBestScore = -Infinity;
+
+            let depthBestMove = null;
+            let depthBestScore = -Infinity;
+
+            let timedOut = false;
 
             for (let i = 0; i < moves.length; i++) {
+                if (deadline && Date.now() > deadline) {
+                    console.log(`Time exceeded during root move loop at depth ${d}`);
+                    timedOut = true;
+                    break;
+                }
+                
                 const m = moves[i];
+                const key = this.moveKey(m);
 
                 copy.MovePiece(m.fr, m.fc, m.tr, m.tc, m.promote);
 
@@ -235,28 +251,37 @@ export class AIV8 {
 
                 copy.undoMove();
 
-                if (score > localBestScore) {
-                    localBestScore = score;
-                    localBestMove = m;
-                }
+                rootScores.set(key, { move: m, score });
+
+                // if (score > depthBestScore) {
+                //     console.log(m, score, depthBestScore, d);
+                //     depthBestScore = score;
+                //     depthBestMove = m;
+                // }
 
                 if (score > alpha) alpha = score;
+            }
 
-                if (deadline && Date.now() > deadline) {
-                    console.log(`Time exceeded during root move loop at depth ${d}`);
-                    break;
+            // if (timedOut) { break; }
+
+            let bestEntry = null;
+            for (const entry of rootScores.values()) {
+                if (!bestEntry || entry.score > bestEntry.score) {
+                    bestEntry = entry;
                 }
             }
 
-            if (!deadline || Date.now() <= deadline) {
-                bestMove = localBestMove;
-                bestScore = localBestScore;
-            } else break;
+            if (bestEntry) {
+                globalBestMove = bestEntry.move;
+                globalBestScore = bestEntry.score;
+            }
         }
 
-        console.log('Best move:', bestMove, bestScore);
+        console.log(rootScores);
 
-        return bestMove;
+        console.log('Best move:', globalBestMove, globalBestScore);
+
+        return globalBestMove;
     }
 
     minimax(engineState, depth, alpha, beta, newMoves = null) {

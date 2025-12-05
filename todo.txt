@@ -5,6 +5,8 @@ find a way to only calc end eval, when needed
 
 look into magic bitboards
 
+AI can play pieces of the opponent
+
 Pawns
 isolated pawns
 backwards pawns
