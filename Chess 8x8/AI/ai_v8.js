@@ -448,18 +448,18 @@ export class AIV8 {
 
     evaluate(engineState) {
         const rows = engineState.rows;
-        const cols = engineState.cols;
 
         const pieces = engineState.pieces;
-        const occupied = engineState.occupied;
-        const occupiedWhite = engineState.occupiedWhite;
-        const occupiedBlack = engineState.occupiedBlack;
 
         const mgValues = this.mgValues;
         const egValues = this.egValues;
         const mgPst = this.mgPst;
         const egPst = this.egPst;
         const phaseWeight = this.phaseWeight;
+
+        const whitePawns = pieces['P'].clone();
+        const blackPawns = pieces['p'].clone();
+        const pawnsBB = whitePawns.or(blackPawns);
 
         let mg = 0, eg = 0, phase = 0;
 
@@ -497,10 +497,45 @@ export class AIV8 {
                     eg -= egPst[typeChar][mirSq];
                 }
 
+                const { r, c: file } = engineState.fromSq(sq);
+
+                const pawnsOnFile = pawnsBB.popcount32(pawnsBB.and(ChessEngine.fileMasks[file]));
+                const ownPawnsOnFile = isWhitePiece ?
+                                       whitePawns.popcount32(whitePawns.and(ChessEngine.fileMasks[file])) :
+                                       blackPawns.popcount32(blackPawns.and(ChessEngine.fileMasks[file]));
+                
+                // Safety
+                if (typeChar !== 'K' && typeChar !== 'P') {
+                    const attackers = engineState.getSquareAttacks(r, file, !isWhitePiece);
+                    const defenders = engineState.getSquareAttacks(r, file, isWhitePiece);
+
+                    const A = attackers.popcount32(attackers);
+                    const D = defenders.popcount32(defenders);
+
+                    let safety = D - A;
+
+                    if (safety > 0) { // More defended than attacked
+                        if (isWhitePiece) {
+                            mg += safety * mgVal;
+                            eg += safety * egVal;
+                        } else {
+                            mg -= safety * mgVal;
+                            eg -= safety * egVal;
+                        }
+                    } else if (safety < 0) { // More attacked than defended
+                        const penalty = Math.min(-safety, 1);
+                        if (isWhitePiece) {
+                            mg -= safety * mgVal;
+                            eg -= safety * 0.5 * egVal;
+                        } else {
+                            mg += safety + mgVal;
+                            eg += safety * 0.5 * egVal;
+                        }
+                    }
+                }
+
                 switch (typeChar) {
                     case 'P':
-                        const { r, c } = engineState.fromSq(sq);
-
                         // Pawn promotion proximity
                         const progress = isWhitePiece ? (rows - 1 - r) / (rows - 1) : r / (rows - 1);
                         const promoWeight = Math.pow(progress, 5);
@@ -516,8 +551,6 @@ export class AIV8 {
                         }
 
                         // Doubled pawns
-                        const file = sq & (rows - 1);
-                        const pawnsOnFile = bb.popcount32(bb.and(ChessEngine.fileMasks[file]));
                         if (pawnsOnFile > 1) {
                             const penalty = (pawnsOnFile - 1) * 5;
                             if (isWhitePiece) {
@@ -534,10 +567,44 @@ export class AIV8 {
                     case 'B':
                         break;
                     case 'R':
+                        if (pawnsOnFile === 0) { // Open file bonus
+                            if (isWhitePiece) {
+                                mg += 20;
+                                eg += 30;
+                            } else {
+                                mg -= 20;
+                                eg -= 30;
+                            }
+                        } else if (ownPawnsOnFile === 0) { // Semi-open file bonus
+                            if (isWhitePiece) {
+                                mg += 10;
+                                eg += 15;
+                            } else {
+                                mg -= 10;
+                                eg -= 15;
+                            }
+                        }
                         break;
                     case 'Q':
                         break;
-                    case 'K'
+                    case 'K':
+                        if (pawnsOnFile === 0) { // Open file bonus
+                            if (isWhitePiece) {
+                                mg -= 35;
+                                eg -= 5;
+                            } else {
+                                mg += 35;
+                                eg += 5;
+                            }
+                        } else if (ownPawnsOnFile === 0) { // Semi-open file bonus
+                            if (isWhitePiece) {
+                                mg -= 20;
+                                eg -= 3;
+                            } else {
+                                mg += 20;
+                                eg += 3;
+                            }
+                        }
                         break;
                 }
 

@@ -15,8 +15,8 @@ export class ChessEngine {
     static initialized = false;
 
     constructor(board = [
-        ['r', 'n', 'b', 'q', 'k', '.', '.', 'r'],
-        ['p', 'p', 'p', 'p', 'p', 'p', 'P', 'p'],
+        ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
+        ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
         ['.', '.', '.', '.', '.', '.', '.', '.'],
         ['.', '.', '.', '.', '.', '.', '.', '.'],
         ['.', '.', '.', '.', '.', '.', '.', '.'],
@@ -683,6 +683,43 @@ export class ChessEngine {
         return false;
     }
 
+    getSquareAttacks(r, c, isWhite) {
+        const byWhite = !isWhite;
+        const sq = this.toSq(r,c);
+
+        // Enemy piece bitboards
+        const P = this.pieces[ byWhite ? 'P' : 'p' ];
+        const N = this.pieces[ byWhite ? 'N' : 'n' ];
+        const B = this.pieces[ byWhite ? 'B' : 'b' ];
+        const R = this.pieces[ byWhite ? 'R' : 'r' ];
+        const Q = this.pieces[ byWhite ? 'Q' : 'q' ];
+        const K = this.pieces[ byWhite ? 'K' : 'k' ];
+
+        let attacks = new BitBoard();
+
+        // Pawns
+        const pawnBB = byWhite
+            ? ChessEngine.pawnMovesBlack[sq]
+            : ChessEngine.pawnMovesWhite[sq];
+
+        attacks = attacks.or(pawnBB.and(P));
+
+        // Knights
+        attacks = attacks.or(ChessEngine.knightMoves[sq].and(N));
+
+        // King
+        attacks = attacks.or(ChessEngine.kingMoves[sq].and(K));
+
+        // Sliding pieces
+        const rookAtk   = this.getSlidingMoves('r', sq);
+        const bishopAtk = this.getSlidingMoves('b', sq);
+
+        attacks = attacks.or(rookAtk.and(R.or(Q)));
+        attacks = attacks.or(bishopAtk.and(B.or(Q)));
+
+        return attacks;
+    }
+
     isKingInCheck(isWhite) {
         const king = this.getKing(isWhite);
             if (!king) return true;
@@ -923,10 +960,10 @@ export class ChessEngine {
         }
 
         // Check / mate
-        const whiteToMove = this.turn === 0;
+        const whiteToMove = this.gameCondition === 'PLAYING' ? !(this.turn === 0) : this.turn === 0;
         const opponentIsWhite = !whiteToMove;
 
-        const oppInCheck = this.isKingInCheck(opponentIsWhite);
+        const oppInCheck = opponentIsWhite ? this.renderer.whiteKingChecked : this.renderer.blackKingChecked;
         const oppLegalMoves = this.hasLegalMoves(opponentIsWhite);
 
         if (!notation.startsWith('O-O') && oppInCheck && !oppLegalMoves) notation += '#';
