@@ -86,21 +86,12 @@ export class ChessEngine {
 
 
     MovePiece(fr, fc, tr, tc, promotePiece = null) {
-        if (this.gameCondition !== 'PLAYING') {
-            console.error('GAME CONDITION DIFFERENT FROM PLAYING');
-            return;
-        }
+        if (this.gameCondition !== 'PLAYING') return false;
 
         // Get pieces
         const originalPiece = this.getPiece(fr, fc);
-            if (this.isEmpty(originalPiece)) {
-                console.error('MOVING EMPTY PIECE');
-                return;
-            }
-            if ((this.isWhite(originalPiece) && this.turn == 1) || (!this.isWhite(originalPiece) && this.turn == 0)) {
-                console.error('MOVING OPPONENT PIECE');
-                return;
-            }
+            if (this.isEmpty(originalPiece)) return false;
+            if (this.isWhite(originalPiece) == (this.turn == 1)) return false;
         const isWhite = this.isWhite(originalPiece);
         const isPawn = originalPiece.toLowerCase() === 'p';
 
@@ -122,7 +113,7 @@ export class ChessEngine {
         if (this.renderer && isPawn && !promotePiece) {
             if ((isWhite && tr === 0) || (!isWhite && tr === this.rows - 1)) {
                 this.renderer.Promote(fr, fc, tr, tc);
-                return;
+                return false;
             }
         }
 
@@ -204,11 +195,13 @@ export class ChessEngine {
             this.renderer.UpdateGame();
             this.renderer.AddToLog();
 
-            if (promotePiece) return this.renderer.PlaySound(3);
-            else if (this.renderer.whiteKingChecked || this.renderer.blackKingChecked) return this.renderer.PlaySound(2);
-            else if (isCapture) return this.renderer.PlaySound(1);
-            else return this.renderer.PlaySound(0);
+            if (promotePiece) this.renderer.PlaySound(3);
+            else if (this.renderer.whiteKingChecked || this.renderer.blackKingChecked) this.renderer.PlaySound(2);
+            else if (isCapture) this.renderer.PlaySound(1);
+            else this.renderer.PlaySound(0);
         }
+
+        return true;
     }
 
     undoMove() {

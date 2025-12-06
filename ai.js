@@ -119,15 +119,13 @@ export class AI {
         for (const move of moves) {
             const prevHash = copy.zobrist.hash;
 
-            copy.MovePiece(move.fr, move.fc, move.tr, move.tc, move.promote);
+            const moved = copy.MovePiece(move.fr, move.fc, move.tr, move.tc, move.promote);
+            if (!moved) continue;
 
             let { score, report } = this.minimax(copy, depth - 1, -Infinity, Infinity, '', '');
             score = -score;
 
             copy.undoMove();
-
-            const nowHash = copy.zobrist.hash;
-            if (prevHash !== nowHash) console.log('PROBLEM BEST', prevHash, nowHash, move);
 
             console.log(move, score, report);
 
@@ -162,16 +160,14 @@ export class AI {
         for (const move of moves) {
             const prevHash = engineState.zobrist.hash;
 
-            engineState.MovePiece(move.fr, move.fc, move.tr, move.tc, move.promote);
+            const moved = engineState.MovePiece(move.fr, move.fc, move.tr, move.tc, move.promote);
+            if (!moved) continue;
 
             // Negamax
             let { score, report } = this.minimax(engineState, depth - 1, -beta, -alpha, betaRp, alphaRp);
             score = -score;
 
             engineState.undoMove();
-
-            const nowHash = engineState.zobrist.hash;
-            if (prevHash !== nowHash) console.log('PROBLEM MINI', prevHash, nowHash, move);
 
             if (score > best) {
                 best = score;
@@ -235,15 +231,13 @@ export class AI {
         for (const move of moves) {
             const prevHash = engineState.zobrist.hash;
 
-            engineState.MovePiece(move.fr, move.fc, move.tr, move.tc, move.promote);
+            const moved = engineState.MovePiece(move.fr, move.fc, move.tr, move.tc, move.promote);
+            if (!moved) continue;
 
             let { score, report } = this.quiescence(engineState, -beta, -alpha, qDepth + 1, betaRp, alphaRp);
             score = -score;
 
             engineState.undoMove();
-
-            const nowHash = engineState.zobrist.hash;
-            if (prevHash !== nowHash) console.log('PROBLEM QUI', prevHash, nowHash, move);
 
             if (score >= beta) return { score: beta, report: betaRp };
             if (score > alpha) {
