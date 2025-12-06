@@ -86,11 +86,21 @@ export class ChessEngine {
 
 
     MovePiece(fr, fc, tr, tc, promotePiece = null) {
-        if (this.gameCondition !== 'PLAYING') return;
+        if (this.gameCondition !== 'PLAYING') {
+            console.error('GAME CONDITION DIFFERENT FROM PLAYING');
+            return;
+        }
 
         // Get pieces
         const originalPiece = this.getPiece(fr, fc);
-            if (this.isEmpty(originalPiece)) return;
+            if (this.isEmpty(originalPiece)) {
+                console.error('MOVING EMPTY PIECE');
+                return;
+            }
+            if ((this.isWhite(originalPiece) && this.turn == 1) || (!this.isWhite(originalPiece) && this.turn == 0)) {
+                console.error('MOVING OPPONENT PIECE');
+                return;
+            }
         const isWhite = this.isWhite(originalPiece);
         const isPawn = originalPiece.toLowerCase() === 'p';
 
@@ -340,6 +350,7 @@ export class ChessEngine {
                         }
 
                         moves.splice(i, 1);
+                        i--;
                     }
                 }
 
@@ -605,8 +616,8 @@ export class ChessEngine {
         // Any pawn/rook/queen = always mating potential
         if (!P.isZero() || !R.isZero() || !Q.isZero()) return false;
 
-        const knights = N.countBits();
-        const bishops = B.countBits();
+        const knights = N.popcount();
+        const bishops = B.popcount();
 
         // King only
         if (knights === 0 && bishops === 0) return true;

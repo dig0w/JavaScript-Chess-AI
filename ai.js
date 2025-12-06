@@ -1,4 +1,4 @@
-import { delay } from '../utils.js';
+import { delay } from './utils.js';
 
 export class AI {
     constructor(engine = null, playsWhite = false, depth = 2) {
@@ -114,62 +114,78 @@ export class AI {
 
         let bestScore = -Infinity;
         let bestMove = null;
+        let bestRp;
 
         for (const move of moves) {
+            const prevHash = copy.zobrist.hash;
+
             copy.MovePiece(move.fr, move.fc, move.tr, move.tc, move.promote);
 
-            const score = -this.minimax(copy, depth - 1, -Infinity, Infinity);
+            let { score, report } = this.minimax(copy, depth - 1, -Infinity, Infinity, '', '');
+            score = -score;
 
             copy.undoMove();
+
+            const nowHash = copy.zobrist.hash;
+            if (prevHash !== nowHash) console.log('PROBLEM BEST', prevHash, nowHash, move);
+
+            console.log(move, score, report);
 
             if (score > bestScore) {
                 bestScore = score;
                 bestMove = move;
+                bestRp = report;
             }
         }
 
-        console.log('Best move:', bestMove, bestScore);
+        console.log('Best move:', bestMove, bestScore, bestRp);
         return bestMove;
     }
 
-    minimax(engineState, depth, alpha, beta) {
+    minimax(engineState, depth, alpha, beta, alphaRp, betaRp) {
         this.nodes++;
 
         // Terminal condition
         if (depth === 0 || engineState.gameCondition !== 'PLAYING') {
-            // Correct terminal scoring
-            if (engineState.gameCondition.startsWith('WHITE_WIN')) return (1000000 - engineState.totalPlies * 50) * (this.playsWhite ? -1 : 1);
-            if (engineState.gameCondition.startsWith('BLACK_WIN')) return (-1000000 - engineState.totalPlies * 50) * (this.playsWhite ? -1 : 1);
-            if (engineState.gameCondition.startsWith('DRAW')) return 500; // draw = neutral
-
-            return this.quiescence(engineState, alpha, beta);
+            return this.quiescence(engineState, alpha, beta, 0, alphaRp, betaRp);
         }
 
         let moves = engineState.getPlayerLegalMoves(engineState.turn === 0);
-            if (moves.length === 0) return this.quiescence(engineState, alpha, beta);
+            if (moves.length === 0) return this.quiescence(engineState, alpha, beta, 0, alphaRp, betaRp);
 
         // Order moves
         moves.sort((a, b) => this.scoreMove(engineState, b) - this.scoreMove(engineState, a));
 
         let best = -Infinity;
+        let bestRp;
 
         for (const move of moves) {
+            const prevHash = engineState.zobrist.hash;
+
             engineState.MovePiece(move.fr, move.fc, move.tr, move.tc, move.promote);
 
-            let tactical = 0;
-            if (move.promote) tactical += 900;
             // Negamax
-            const score = -this.minimax(engineState, depth - 1, -beta, -alpha) + tactical;
+            let { score, report } = this.minimax(engineState, depth - 1, -beta, -alpha, betaRp, alphaRp);
+            score = -score;
 
             engineState.undoMove();
 
-            if (score > best) best = score;
-            if (score > alpha) alpha = score;
+            const nowHash = engineState.zobrist.hash;
+            if (prevHash !== nowHash) console.log('PROBLEM MINI', prevHash, nowHash, move);
+
+            if (score > best) {
+                best = score;
+                bestRp = report;
+            }
+            if (score > alpha) {
+                alpha = score;
+                alphaRp = report;
+            }
 
             if (alpha >= beta) break; // alpha–beta cutoff
         }
 
-        return best;
+        return { score: best, report: bestRp };
     }
 
     scoreMove(engineState, move) {
@@ -188,24 +204,28 @@ export class AI {
         // 2. Promotions
         if (move.promote) score += 1000;
 
-        // 3. Check bonus
-        engineState.MovePiece(move.fr, move.fc, move.tr, move.tc, move.promote);
-            if (engineState.isKingInCheck(!engineState.isWhite(moving))) score += 50;
-        engineState.undoMove();
+        // // 3. Check bonus
+        // engineState.MovePiece(move.fr, move.fc, move.tr, move.tc, move.promote);
+        // console.log('scoreMove() move', engineState.turn);
+        //     if (engineState.isKingInCheck(!engineState.isWhite(moving))) score += 50;
+        // engineState.undoMove();
+        // console.log('scoreMove() undo', engineState.turn);
 
         return score;
     }
 
-    quiescence(engineState, alpha, beta, qDepth = 0) {
-        if (qDepth > 100) return this.evaluate(engineState);
-
+    quiescence(engineState, alpha, beta, qDepth = 0, alphaRp, betaRp) {
         this.nodes++;
+        if (qDepth > 3) return this.evaluate(engineState);
 
-        const standPat = this.evaluate(engineState);
-        if (standPat >= beta) return beta;
-        if (alpha < standPat) alpha = standPat;
+        const { score: standPat, report: standPatRp } = this.evaluate(engineState);
+        if (standPat >= beta) return { score: beta, report: betaRp };
+        if (alpha < standPat) {
+            alpha = standPat;
+            alphaRp = standPatRp;
+        }
 
-        // Only consider captures and promotions
+        // Only captures or promotions
         const moves = engineState.getPlayerLegalMoves(engineState.turn === 0)
             .filter(m => !engineState.isEmpty(engineState.getPiece(m.tr, m.tc)) || m.promote);
 
@@ -213,54 +233,153 @@ export class AI {
         moves.sort((a, b) => this.scoreMove(engineState, b) - this.scoreMove(engineState, a));
 
         for (const move of moves) {
+            const prevHash = engineState.zobrist.hash;
+
             engineState.MovePiece(move.fr, move.fc, move.tr, move.tc, move.promote);
 
-            const score = -this.quiescence(engineState, -beta, -alpha, qDepth + 1);
+            let { score, report } = this.quiescence(engineState, -beta, -alpha, qDepth + 1, betaRp, alphaRp);
+            score = -score;
 
             engineState.undoMove();
 
-            if (score >= beta) return beta;
-            if (score > alpha) alpha = score;
+            const nowHash = engineState.zobrist.hash;
+            if (prevHash !== nowHash) console.log('PROBLEM QUI', prevHash, nowHash, move);
+
+            if (score >= beta) return { score: beta, report: betaRp };
+            if (score > alpha) {
+                alpha = score;
+                alphaRp = report;
+            }
         }
 
-        return alpha;
+        return { score: alpha, report: alphaRp };
     }
 
     evaluate(engineState) {
-        let score = 0;
+        // End Condition
+        if (engineState.gameCondition.startsWith('WHITE_WIN')) return { score: 1000000, report: 'WHITE_WIN' };
+        if (engineState.gameCondition.startsWith('BLACK_WIN')) return { score: -1000000, report: 'BLACK_WIN' };
+        if (engineState.gameCondition.startsWith('DRAW')) return { score: -500, report: 'DRAW' };
 
-        for (let r = 0; r < engineState.rows; r++) {
-            for (let c = 0; c < engineState.cols; c++) {
-                const p = engineState.getPiece(r, c);
-                    if (engineState.isEmpty(p)) continue;
-                const upper = p.toUpperCase();
+        let score = 0;
+        let report = '';
+        
+        const rows = engineState.rows;
+        const pieces = engineState.pieces;
+
+        const board = Array.from({ length: rows }, () => Array.from({ length: rows }, () => '.'));
+
+        for (const [piece, pieceBB] of Object.entries(pieces)) {
+            const bb = pieceBB.clone();
+
+            const isWhite = engineState.isWhite(piece);
+            const typeChar = piece.toUpperCase();
+            const dir = isWhite ? 1 : -1;
+
+            let sq = bb.bitIndex();
+            while (sq >= 0) {
+                const { r, c } = engineState.fromSq(sq);
+                board[r][c] = piece;
+
+                report += '\n\nsquare: r: ' + r + ' c: ' + c + ' piece: ' + piece;
 
                 // Material
-                score += (p === upper ? 1 : -1) * (this.pieceValues[upper] || 0);
+                const pcVal = (this.pieceValues[typeChar] || 0);
+                score += dir * pcVal;
+                report += '\nmaterial: ' + dir * pcVal;
 
                 // PST bonus
-                const pstValue = p === upper ? this.pst[upper][r][c] : -this.pst[upper][engineState.rows - 1 - r][c];
+                const pstValue = isWhite ? this.pst[typeChar][r][c] : -this.pst[typeChar][rows - 1 - r][c];
                 score += pstValue;
+                report += '\npst bonus: ' + pstValue;
 
-                // Pawn promotion proximity
-                if (p === 'P') {
-                    if (r === 1) score += 800;
-                    else if (r === 2) score += 300;
-                } else if (p === 'p') {
-                    if (r === engineState.rows - 2) score -= 800;
-                    else if (r === engineState.rows - 3) score -= 300;
+                // Safety
+                if (typeChar !== 'K' && typeChar !== 'P') {
+                    const attackers = engineState.getSquareAttacks(r, c, !isWhite);
+                    const defenders = engineState.getSquareAttacks(r, c, isWhite);
+
+                    let Avalue = 0;
+                    let Dvalue = 0;
+
+                    const sumPieceValues = (bb) => {
+                        let total = 0;
+                        for (const [p, pBB] of Object.entries(pieces)) {
+                            const typeChar = p.toUpperCase();
+
+                            const val = typeChar === 'K' ? 0 : (this.pieceValues[typeChar] || 0); // king usually ignored
+
+                            const masked = bb.and ? bb.and(pBB) : bb.and(bb, pBB);
+                            total += masked.popcount() * val;
+                        }
+                        return total;
+                    }
+
+                    Avalue = sumPieceValues(attackers);
+                    Dvalue = sumPieceValues(defenders);
+
+                    const safetyValue = Dvalue - Avalue;
+                    report += '\nsafetyValue: ' + safetyValue;
+                    if (safetyValue !== 0) {
+                        score += dir * safetyValue;
+                        report += '\nsafety: ' + dir * safetyValue;
+                    }
                 }
+
+                // Piece Types
+                switch (typeChar) {
+                    case 'P':
+                        // Pawn promotion proximity
+                        const progress = isWhite ? (rows - 1 - r) / (rows - 1) : r / (rows - 1);
+                        score += dir * Math.pow(progress, 5) * this.pieceValues['Q'];
+                        report += '\npromotion: ' + dir * Math.pow(progress, 5) * this.pieceValues['Q'];
+                        break;
+                    case 'N':
+                        break;
+                    case 'B':
+                        break;
+                    case 'R':
+                        break;
+                    case 'Q':
+                        break;
+                    case 'K':
+                        break;
+                }
+
+                bb.clearBit(sq);
+                sq = bb.bitIndex();
             }
         }
 
         // Mobility
-        const whiteMoves = engineState.getPlayerLegalMoves(true).length;
-        const blackMoves = engineState.getPlayerLegalMoves(false).length;
-        score += (whiteMoves - blackMoves) * 5;
+        const whiteMoves = engineState.getPlayerLegalMoves(true);
+        const blackMoves = engineState.getPlayerLegalMoves(false);
+        score += (whiteMoves.length - blackMoves.length) * 5;
+        report += '\nmobility: ' + (whiteMoves.length - blackMoves.length) * 5;
 
-        // Discourage long games
-        score -= engineState.totalPlies * 2;
+        for (const move of (engineState.turn === 0 ? whiteMoves : blackMoves)) {
+            const from = engineState.getPiece(move.fr, move.fc);
+            const target = engineState.getPiece(move.tr, move.tc);
 
-        return engineState.turn === 0 ? score : -score;
+            // Captures
+            if (!engineState.isEmpty(target)) {
+                score += this.pieceValues[target.toUpperCase()] || 0;
+                report += '\ncapture: ' + this.pieceValues[target.toUpperCase()] || 0;
+            }
+        }
+
+        report += '\n\nfinal: ' + score;
+        report += '\n\nboard: ';
+        for (let index = 0; index < board.length; index++) {
+            report += '\n' + board[index].toString();
+        }
+
+        report += '\n\nmoves: ';
+        for (let index = 0; index < engineState.logs.length; index++) {
+            const log = engineState.logs[index];
+
+            report += '\n' + log.originalPiece + ' from ' + log.fr + ' ' + log.fc + ' to ' + log.tr + ' ' + log.tc + ' turn: ' + log.turn;
+        }
+
+        return { score, report };
     }
 }
