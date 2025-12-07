@@ -106,6 +106,10 @@ export class AI {
     bestMove(depth) {
         const engine = this.engine;
         const moves = engine.getPlayerLegalMoves(engine.turn === 0);
+            if (moves.length == 0) {
+                console.log('NO MOVES');
+                return null;
+            }
 
         const copy = engine.clone();
 
@@ -117,8 +121,6 @@ export class AI {
         let bestRp;
 
         for (const move of moves) {
-            const prevHash = copy.zobrist.hash;
-
             const moved = copy.MovePiece(move.fr, move.fc, move.tr, move.tc, move.promote);
             if (!moved) continue;
 
@@ -127,7 +129,7 @@ export class AI {
 
             copy.undoMove();
 
-            console.log(move, score, report);
+            console.log(move, score);
 
             if (score > bestScore) {
                 bestScore = score;
@@ -136,7 +138,12 @@ export class AI {
             }
         }
 
-        console.log('Best move:', bestMove, bestScore, bestRp);
+        if (bestScore == -Infinity) {
+            console.log('NO LEGAL', moves, copy.turn);
+            return null;
+        }
+
+        console.log('Best move:', bestMove, bestScore, bestRp, moves.length);
         return bestMove;
     }
 
@@ -155,17 +162,17 @@ export class AI {
         moves.sort((a, b) => this.scoreMove(engineState, b) - this.scoreMove(engineState, a));
 
         let best = -Infinity;
-        let bestRp;
+        let bestRp = '';
 
         for (const move of moves) {
-            const prevHash = engineState.zobrist.hash;
-
             const moved = engineState.MovePiece(move.fr, move.fc, move.tr, move.tc, move.promote);
             if (!moved) continue;
 
             // Negamax
             let { score, report } = this.minimax(engineState, depth - 1, -beta, -alpha, betaRp, alphaRp);
             score = -score;
+
+            if (isNaN(score) || score == Infinity) console.log('SCORE IS INVALID', score);
 
             engineState.undoMove();
 
@@ -180,6 +187,8 @@ export class AI {
 
             if (alpha >= beta) break; // alpha–beta cutoff
         }
+
+        if (best == -Infinity) return this.quiescence(engineState, alpha, beta, 0, alphaRp, betaRp);
 
         return { score: best, report: bestRp };
     }
@@ -200,19 +209,15 @@ export class AI {
         // 2. Promotions
         if (move.promote) score += 1000;
 
-        // // 3. Check bonus
-        // engineState.MovePiece(move.fr, move.fc, move.tr, move.tc, move.promote);
-        // console.log('scoreMove() move', engineState.turn);
-        //     if (engineState.isKingInCheck(!engineState.isWhite(moving))) score += 50;
-        // engineState.undoMove();
-        // console.log('scoreMove() undo', engineState.turn);
+        // 3. Checks
+        if (!engineState.moveKeepsKingSafe(move.fr, move.fc, move.tr, move.tc, true)) score += 50;
 
         return score;
     }
 
     quiescence(engineState, alpha, beta, qDepth = 0, alphaRp, betaRp) {
         this.nodes++;
-        if (qDepth > 3) return this.evaluate(engineState);
+        if (qDepth > 3 || engineState.gameCondition !== 'PLAYING') return this.evaluate(engineState);
 
         const { score: standPat, report: standPatRp } = this.evaluate(engineState);
         if (standPat >= beta) return { score: beta, report: betaRp };
@@ -229,13 +234,13 @@ export class AI {
         moves.sort((a, b) => this.scoreMove(engineState, b) - this.scoreMove(engineState, a));
 
         for (const move of moves) {
-            const prevHash = engineState.zobrist.hash;
-
             const moved = engineState.MovePiece(move.fr, move.fc, move.tr, move.tc, move.promote);
             if (!moved) continue;
 
             let { score, report } = this.quiescence(engineState, -beta, -alpha, qDepth + 1, betaRp, alphaRp);
             score = -score;
+
+            if (isNaN(score) || score == Infinity) console.log('SCORE IS INVALID', score);
 
             engineState.undoMove();
 
@@ -250,14 +255,16 @@ export class AI {
     }
 
     evaluate(engineState) {
+        const side = engineState.turn === 0 ? 1 : -1;
+
         // End Condition
-        if (engineState.gameCondition.startsWith('WHITE_WIN')) return { score: 1000000, report: 'WHITE_WIN' };
-        if (engineState.gameCondition.startsWith('BLACK_WIN')) return { score: -1000000, report: 'BLACK_WIN' };
-        if (engineState.gameCondition.startsWith('DRAW')) return { score: -500, report: 'DRAW' };
+        if (engineState.gameCondition.startsWith('WHITE_WIN')) return { score: 1000000 * side, report: 'WHITE_WIN' };
+        if (engineState.gameCondition.startsWith('BLACK_WIN')) return { score: -1000000 * side, report: 'BLACK_WIN' };
+        if (engineState.gameCondition.startsWith('DRAW')) return { score: -500 * side, report: 'DRAW' };
 
         let score = 0;
         let report = '';
-        
+
         const rows = engineState.rows;
         const pieces = engineState.pieces;
 
@@ -268,6 +275,8 @@ export class AI {
 
             const isWhite = engineState.isWhite(piece);
             const typeChar = piece.toUpperCase();
+            const pieceVal = (this.pieceValues[typeChar] || 0);
+            const pst = this.pst[typeChar];
             const dir = isWhite ? 1 : -1;
 
             let sq = bb.bitIndex();
@@ -278,14 +287,13 @@ export class AI {
                 report += '\n\nsquare: r: ' + r + ' c: ' + c + ' piece: ' + piece;
 
                 // Material
-                const pcVal = (this.pieceValues[typeChar] || 0);
-                score += dir * pcVal;
-                report += '\nmaterial: ' + dir * pcVal;
+                score += dir * pieceVal;
+                report += '\nmaterial: ' + dir * pieceVal;
 
-                // PST bonus
-                const pstValue = isWhite ? this.pst[typeChar][r][c] : -this.pst[typeChar][rows - 1 - r][c];
-                score += pstValue;
-                report += '\npst bonus: ' + pstValue;
+                // // PST bonus
+                // const pstValue = isWhite ? pst[r][c] : pst[rows - 1 - r][c];
+                // score += pstValue;
+                // report += '\npst bonus: ' + pstValue;
 
                 // Safety
                 if (typeChar !== 'K' && typeChar !== 'P') {
@@ -350,17 +358,6 @@ export class AI {
         score += (whiteMoves.length - blackMoves.length) * 5;
         report += '\nmobility: ' + (whiteMoves.length - blackMoves.length) * 5;
 
-        for (const move of (engineState.turn === 0 ? whiteMoves : blackMoves)) {
-            const from = engineState.getPiece(move.fr, move.fc);
-            const target = engineState.getPiece(move.tr, move.tc);
-
-            // Captures
-            if (!engineState.isEmpty(target)) {
-                score += this.pieceValues[target.toUpperCase()] || 0;
-                report += '\ncapture: ' + this.pieceValues[target.toUpperCase()] || 0;
-            }
-        }
-
         report += '\n\nfinal: ' + score;
         report += '\n\nboard: ';
         for (let index = 0; index < board.length; index++) {
@@ -374,6 +371,8 @@ export class AI {
             report += '\n' + log.originalPiece + ' from ' + log.fr + ' ' + log.fc + ' to ' + log.tr + ' ' + log.tc + ' turn: ' + log.turn;
         }
 
-        return { score, report };
+        if (isNaN(score) || score == Infinity) console.log('SCORE IS INVALID', score);
+
+        return { score: score * side, report };
     }
 }

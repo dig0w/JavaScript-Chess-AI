@@ -86,12 +86,21 @@ export class ChessEngine {
 
 
     MovePiece(fr, fc, tr, tc, promotePiece = null) {
-        if (this.gameCondition !== 'PLAYING') return false;
+        if (this.gameCondition !== 'PLAYING') {
+            console.error('GAME CONDITION', { fr, fc, tr, tc, promote: promotePiece });
+            return false;
+        }
 
         // Get pieces
         const originalPiece = this.getPiece(fr, fc);
-            if (this.isEmpty(originalPiece)) return false;
-            if (this.isWhite(originalPiece) == (this.turn == 1)) return false;
+            if (this.isEmpty(originalPiece)) {
+                console.error('EMPTY PIECE');
+                return false;
+            }
+            if (this.isWhite(originalPiece) == (this.turn == 1)) {
+                console.error('OPP PIECE');
+                return false;
+            }
         const isWhite = this.isWhite(originalPiece);
         const isPawn = originalPiece.toLowerCase() === 'p';
 
@@ -205,7 +214,7 @@ export class ChessEngine {
     }
 
     undoMove() {
-        if (this.logs.length === 0) return;
+        if (this.logs.length === 0) return false;
 
         this.totalPlies--;
         const lastMove = this.logs.pop();
@@ -258,8 +267,9 @@ export class ChessEngine {
         this.repetitionCount.set(hash, (this.repetitionCount.get(hash) || 1) - 1);
 
         // Restore game condition and turn
+        const prevGameCondition = this.gameCondition;
         this.gameCondition = gameCondition;
-        this.SwitchTurn();
+        this.SwitchTurn(prevGameCondition !== 'PLAYING');
 
         // UI updates
         if (this.renderer) {
@@ -290,11 +300,13 @@ export class ChessEngine {
             this.renderer.UpdateGame();
             this.renderer.RemoveFromLog();
 
-            if (promotePiece) return this.renderer.PlaySound(3);
-            else if (this.renderer.whiteKingChecked || this.renderer.blackKingChecked) return this.renderer.PlaySound(2);
-            else if (isCapture) return this.renderer.PlaySound(1);
-            else return this.renderer.PlaySound(0);
+            if (promotePiece) this.renderer.PlaySound(3);
+            else if (this.renderer.whiteKingChecked || this.renderer.blackKingChecked) this.renderer.PlaySound(2);
+            else if (isCapture) this.renderer.PlaySound(1);
+            else this.renderer.PlaySound(0);
         }
+
+        return true;
     }
 
 
@@ -511,7 +523,7 @@ export class ChessEngine {
         return this.isSquareAttacked(king.r, king.c, isWhite);
     }
 
-    moveKeepsKingSafe(fr, fc, tr, tc) {
+    moveKeepsKingSafe(fr, fc, tr, tc, oppKing = false) {
         const movingPiece = this.getPiece(fr, fc);
         if (this.isEmpty(movingPiece)) return false;
 
@@ -563,7 +575,7 @@ export class ChessEngine {
         this.occupied = this.occupiedWhite.or(this.occupiedBlack);
 
         // ---- CHECK KING SAFETY ---- //
-        const safe = !this.isKingInCheck(isWhite);
+        const safe = !this.isKingInCheck(isWhite !== oppKing);
 
         // ---- UNDO MOVE (REVERT EXACTLY) ---- //
         pieceBB.clearBit(toSq);
@@ -635,8 +647,8 @@ export class ChessEngine {
     }
 
 
-    SwitchTurn() {
-        this.turn = 1 - this.turn;
+    SwitchTurn(callPlay = false) {
+        if (!callPlay) this.turn = 1 - this.turn;
 
         if (this.turn == 0 && this.whiteAI) this.whiteAI?.Play();
         if (this.turn == 1 && this.blackAI) this.blackAI?.Play();

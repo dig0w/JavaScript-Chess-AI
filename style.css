@@ -298,6 +298,8 @@ ul {
     display: none;
 }
 .popup-card .card {
+    position: relative;
+
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -314,7 +316,7 @@ ul {
     align-items: center;
 }
 .popup-card .card header {
-    padding: 1rem 2rem;
+    padding: 1.5rem 2rem;
 
     flex-direction: column;
     gap: .5rem;
@@ -345,6 +347,16 @@ ul {
     border-bottom-left-radius: 1rem;
     border-bottom-right-radius: 1rem;
     background-color: rgba(var(--background-color), 1);
+}
+.popup-card .card .back {
+    position: absolute;
+    z-index: 100;
+    top: 0;
+
+    width: fit-content;
+}
+.popup-card .card .back button {
+    font-size: 32px;
 }
 
 .popup-promotion {

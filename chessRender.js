@@ -182,22 +182,22 @@ export class ChessRender {
 
             this.endScreen.classList.add('won');
 
-            this.endScreen.children[0].children[0].children[0].textContent = 'White Won!';
-            this.endScreen.children[0].children[0].children[1].textContent = 'by ' + this.engine.gameCondition.split('_').slice(2).join(' ').toLowerCase();
+            this.endScreen.children[0].children[1].children[0].textContent = 'White Won!';
+            this.endScreen.children[0].children[1].children[1].textContent = 'by ' + this.engine.gameCondition.split('_').slice(2).join(' ').toLowerCase();
         } else if (this.engine.gameCondition.startsWith('BLACK_WINS')) {
             this.endScreen.classList.remove('hidden');
 
             this.endScreen.classList.add('won');
 
-            this.endScreen.children[0].children[0].children[0].textContent = 'Black Won!';
-            this.endScreen.children[0].children[0].children[1].textContent = 'by ' + this.engine.gameCondition.split('_').slice(2).join(' ').toLowerCase();
+            this.endScreen.children[0].children[1].children[0].textContent = 'Black Won!';
+            this.endScreen.children[0].children[1].children[1].textContent = 'by ' + this.engine.gameCondition.split('_').slice(2).join(' ').toLowerCase();
         } else if (this.engine.gameCondition.startsWith('DRAW')) {
             this.endScreen.classList.remove('hidden');
 
             this.endScreen.classList.add('draw');
 
-            this.endScreen.children[0].children[0].children[0].textContent = 'Draw!';
-            this.endScreen.children[0].children[0].children[1].textContent = 'by ' + this.engine.gameCondition.split('_').slice(1).join(' ').toLowerCase();
+            this.endScreen.children[0].children[1].children[0].textContent = 'Draw!';
+            this.endScreen.children[0].children[1].children[1].textContent = 'by ' + this.engine.gameCondition.split('_').slice(1).join(' ').toLowerCase();
         }
     }
 
