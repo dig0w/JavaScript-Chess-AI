@@ -71,8 +71,10 @@ export class ChessEngine {
         this.promoPieces = ['q', 'r', 'b', 'n'];
         this.piecePoints = { p: 1, b: 3, n: 3, r: 5, q: 9, k: 0 };
 
+        this.halfmoveClock = 0;
         this.zobrist = new Zobrist(this.rows, this.cols);
         this.repetitionCount = new Map();
+        this.repetitionCount.set(this.zobrist.hash, 1);
 
         this.gameCondition = 'PLAYING';
         this.logs = [];
@@ -776,6 +778,8 @@ export class ChessEngine {
 
         clone.zobrist = this.zobrist.clone();
         clone.repetitionCount = new Map(this.repetitionCount);
+
+        clone.halfmoveClock = this.halfmoveClock;
         
         clone.turn = this.turn;
         clone.gameCondition = this.gameCondition;

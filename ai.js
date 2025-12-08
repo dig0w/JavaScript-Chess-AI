@@ -120,6 +120,10 @@ export class AI {
         let bestMove = null;
         let bestRp;
 
+        let gC;
+        let hash;
+        let nRC;
+
         for (const move of moves) {
             const moved = copy.MovePiece(move.fr, move.fc, move.tr, move.tc, move.promote);
             if (!moved) continue;
@@ -258,9 +262,9 @@ export class AI {
         const side = engineState.turn === 0 ? 1 : -1;
 
         // End Condition
-        if (engineState.gameCondition.startsWith('WHITE_WIN')) return { score: 1000000 * side, report: 'WHITE_WIN' };
-        if (engineState.gameCondition.startsWith('BLACK_WIN')) return { score: -1000000 * side, report: 'BLACK_WIN' };
-        if (engineState.gameCondition.startsWith('DRAW')) return { score: -500 * side, report: 'DRAW' };
+        if (engineState.gameCondition.startsWith('WHITE_WIN')) return { score: (1000000 - (engineState.totalPlies * 2)) * -side, report: 'WHITE_WIN' };
+        if (engineState.gameCondition.startsWith('BLACK_WIN')) return { score: (-1000000 + (engineState.totalPlies * 2)) * -side, report: 'BLACK_WIN' };
+        if (engineState.gameCondition.startsWith('DRAW')) return { score: -500 * -side, report: 'DRAW' };
 
         let score = 0;
         let report = '';
@@ -357,6 +361,10 @@ export class AI {
         const blackMoves = engineState.getPlayerLegalMoves(false);
         score += (whiteMoves.length - blackMoves.length) * 5;
         report += '\nmobility: ' + (whiteMoves.length - blackMoves.length) * 5;
+
+        // Discourage long games
+        score -= engineState.totalPlies * 2;
+        report += '\nlong: ' + -(engineState.totalPlies * 2);
 
         report += '\n\nfinal: ' + score;
         report += '\n\nboard: ';

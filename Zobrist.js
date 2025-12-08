@@ -5,14 +5,14 @@ export class Zobrist {
 
         this.piece = {};    // piece[pieceType][square]
         this.castle = new Array(16);
-        this.ep = new Array(8).fill(0);
+        this.ep = new Array(cols).fill(0);
         this.turn = this.rand();
 
         const pieces = ['P','N','B','R','Q','K','p','n','b','r','q','k'];
 
         for (const p of pieces) {
-            this.piece[p] = new Array(64);
-            for (let i = 0; i < 64; i++) {
+            this.piece[p] = new Array(rows*cols);
+            for (let i = 0; i < rows*cols; i++) {
                 this.piece[p][i] = this.rand();
             }
         }
@@ -59,7 +59,7 @@ export class Zobrist {
     }
 
     clone() {
-        const copy = new Zobrist();
+        const copy = new Zobrist(this.rows, this.cols);
 
         for (const key of Object.keys(this.piece)) {
             copy.piece[key] = this.piece[key].slice();

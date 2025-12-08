@@ -1,4 +1,4 @@
-import { delay } from '../utils.js';
+import { delay } from '../../utils.js';
 
 export class AIV6 {
     constructor(engine = null, playsWhite = false, depth = 2) {

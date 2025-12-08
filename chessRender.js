@@ -180,6 +180,8 @@ export class ChessRender {
         if (this.engine.gameCondition.startsWith('WHITE_WINS')) {
             this.endScreen.classList.remove('hidden');
 
+            this.endScreen.classList.remove('lost');
+            this.endScreen.classList.remove('draw');
             this.endScreen.classList.add('won');
 
             this.endScreen.children[0].children[1].children[0].textContent = 'White Won!';
@@ -187,6 +189,8 @@ export class ChessRender {
         } else if (this.engine.gameCondition.startsWith('BLACK_WINS')) {
             this.endScreen.classList.remove('hidden');
 
+            this.endScreen.classList.remove('lost');
+            this.endScreen.classList.remove('draw');
             this.endScreen.classList.add('won');
 
             this.endScreen.children[0].children[1].children[0].textContent = 'Black Won!';
@@ -194,6 +198,8 @@ export class ChessRender {
         } else if (this.engine.gameCondition.startsWith('DRAW')) {
             this.endScreen.classList.remove('hidden');
 
+            this.endScreen.classList.remove('lost');
+            this.endScreen.classList.remove('won');
             this.endScreen.classList.add('draw');
 
             this.endScreen.children[0].children[1].children[0].textContent = 'Draw!';

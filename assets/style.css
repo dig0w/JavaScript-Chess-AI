@@ -113,9 +113,9 @@ ul {
 .game-container .board {
     position: relative;
 
-    max-width: 80%;
-    max-height: 80%;
-    aspect-ratio: 1/1;
+    width: min(100%, 80vw);
+    height: min(100%, 80vh);
+    aspect-ratio: 1 / 1;
 
     display: grid;
 }
@@ -394,28 +394,28 @@ ul {
     background-color: rgba(var(--background-white-color), 0.5);
 }
 .popup-promotion .square.queen {
-    background-image: url(assets/chess.com_wq.png);
+    background-image: url(chess.com_wq.png);
 }
 .popup-promotion.black .square.queen {
-    background-image: url(assets/chess.com_bq.png);
+    background-image: url(chess.com_bq.png);
 }
 .popup-promotion .square.knight {
-    background-image: url(assets/chess.com_wn.png);
+    background-image: url(chess.com_wn.png);
 }
 .popup-promotion.black .square.knight {
-    background-image: url(assets/chess.com_bn.png);
+    background-image: url(chess.com_bn.png);
 }
 .popup-promotion .square.rook {
-    background-image: url(assets/chess.com_wr.png);
+    background-image: url(chess.com_wr.png);
 }
 .popup-promotion.black .square.rook {
-    background-image: url(assets/chess.com_br.png);
+    background-image: url(chess.com_br.png);
 }
 .popup-promotion .square.bishop {
-    background-image: url(assets/chess.com_wb.png);
+    background-image: url(chess.com_wb.png);
 }
 .popup-promotion.black .square.bishop {
-    background-image: url(assets/chess.com_bb.png);
+    background-image: url(chess.com_bb.png);
 }
 
 .back {

@@ -1,4 +1,4 @@
-import { delay } from './utils.js';
+import { delay } from '../utils.js';
 
 export class ChessRender {
     constructor(engine = null) {
@@ -17,7 +17,7 @@ export class ChessRender {
         this.blurredTime = null;
         this.lastPromote = null;
 
-        this.assetPrefix = 'assets/chess.com_';
+        this.assetPrefix = '../assets/chess.com_';
         this.sounds = [
             this.assetPrefix + 'move-self' + '.webm',
             this.assetPrefix + 'capture' + '.webm',
