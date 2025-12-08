@@ -110,12 +110,11 @@ ul {
     justify-content: center;
 }
 
-/* 4x4 board */
 .game-container .board {
     position: relative;
 
-    width: auto;
-    height: 80%;
+    max-width: 80%;
+    max-height: 80%;
     aspect-ratio: 1/1;
 
     display: grid;
