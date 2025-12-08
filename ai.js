@@ -312,7 +312,7 @@ export class AI {
                         for (const [p, pBB] of Object.entries(pieces)) {
                             const typeChar = p.toUpperCase();
 
-                            const val = typeChar === 'K' ? 0 : (this.pieceValues[typeChar] || 0); // king usually ignored
+                            const val = typeChar === 'K' ? 0 : (this.pieceValues[typeChar] || 0);
 
                             const masked = bb.and ? bb.and(pBB) : bb.and(bb, pBB);
                             total += masked.popcount() * val;
@@ -326,8 +326,8 @@ export class AI {
                     const safetyValue = Dvalue - Avalue;
                     report += '\nsafetyValue: ' + safetyValue;
                     if (safetyValue !== 0) {
-                        score += dir * safetyValue;
-                        report += '\nsafety: ' + dir * safetyValue;
+                        score += safetyValue;
+                        report += '\nsafety: ' + safetyValue;
                     }
                 }
 
@@ -364,7 +364,7 @@ export class AI {
 
         // Discourage long games
         score -= engineState.totalPlies * 2;
-        report += '\nlong: ' + -(engineState.totalPlies * 2);
+        report += '\nlong games: ' + -(engineState.totalPlies * 2);
 
         report += '\n\nfinal: ' + score;
         report += '\n\nboard: ';
