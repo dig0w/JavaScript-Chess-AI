@@ -1,4 +1,5 @@
 import { delay } from './utils.js';
+import { ChessEngine } from './chessEngine.js';
 
 export class AI {
     constructor(engine = null, playsWhite = false, depth = 2) {
@@ -133,7 +134,7 @@ export class AI {
 
             copy.undoMove();
 
-            console.log(move, score);
+            // console.log(move, score);
 
             if (score > bestScore) {
                 bestScore = score;
@@ -274,6 +275,10 @@ export class AI {
 
         const board = Array.from({ length: rows }, () => Array.from({ length: rows }, () => '.'));
 
+        const whitePawns = pieces['P'].clone();
+        const blackPawns = pieces['p'].clone();
+        const pawnsBB = whitePawns.or(blackPawns);
+
         for (const [piece, pieceBB] of Object.entries(pieces)) {
             const bb = pieceBB.clone();
 
@@ -326,28 +331,54 @@ export class AI {
                     const safetyValue = Dvalue - Avalue;
                     report += '\nsafetyValue: ' + safetyValue;
                     if (safetyValue !== 0) {
-                        score += dir * safetyValue;
-                        report += '\nsafety: ' + dir * safetyValue;
+                        score += -dir * safetyValue;
+                        report += '\nsafety: ' + -dir * safetyValue;
                     }
                 }
+
+                const pawnsOnFile = pawnsBB.popcount32(pawnsBB.and(ChessEngine.fileMasks[c]));
+                const ownPawnsOnFile = isWhite ?
+                                        whitePawns.popcount32(whitePawns.and(ChessEngine.fileMasks[c])) :
+                                        blackPawns.popcount32(blackPawns.and(ChessEngine.fileMasks[c]));
 
                 // Piece Types
                 switch (typeChar) {
                     case 'P':
-                        // Pawn promotion proximity
+                        // Promotion proximity
                         const progress = isWhite ? (rows - 1 - r) / (rows - 1) : r / (rows - 1);
                         score += dir * Math.pow(progress, 5) * this.pieceValues['Q'];
                         report += '\npromotion: ' + dir * Math.pow(progress, 5) * this.pieceValues['Q'];
+
+                        // Doubled pawns
+                        if (ownPawnsOnFile > 1) {
+                            const penalty = (ownPawnsOnFile - 1) * 5;
+                            score += -dir * penalty;
+                            report += '\ndoubled: ' + -dir * penalty;
+                        }
                         break;
                     case 'N':
                         break;
                     case 'B':
                         break;
                     case 'R':
+                        if (pawnsOnFile === 0) { // Open file bonus
+                            score += dir * 20;
+                            report += '\nopen rook: ' + dir * 20;
+                        } else if (ownPawnsOnFile === 0) { // Semi-open file bonus
+                            score += dir * 10;
+                            report += '\nsemi open rook: ' + dir * 10;
+                        }
                         break;
                     case 'Q':
                         break;
                     case 'K':
+                        if (pawnsOnFile === 0) { // Open file bonus
+                            score += -dir * 35;
+                            report += '\nopen king: ' + -dir * 35;
+                        } else if (ownPawnsOnFile === 0) { // Semi-open file bonus
+                            score += -dir * 20;
+                            report += '\nsemi open king: ' + -dir * 20;
+                        }
                         break;
                 }
 
@@ -355,6 +386,16 @@ export class AI {
                 sq = bb.bitIndex();
             }
         }
+
+        // Castling Rights
+        score += engineState.castlingRights.whiteKingSide ? 5 : -5;
+        score += engineState.castlingRights.whiteQueenSide ? 5 : -5;
+        score += engineState.castlingRights.blackKingSide ? -5 : 5;
+        score += engineState.castlingRights.blackQueenSide ? -5 : 5;
+        report += '\nwK: ' + engineState.castlingRights.whiteKingSide ? 5 : -5;
+        report += '\nwQ: ' + engineState.castlingRights.whiteQueenSide ? 5 : -5;
+        report += '\nbK: ' + engineState.castlingRights.blackKingSide ? -5 : 5;
+        report += '\nbQ: ' + engineState.castlingRights.blackQueenSide ? -5 : 5;
 
         // Mobility
         const whiteMoves = engineState.getPlayerLegalMoves(true);
@@ -366,7 +407,7 @@ export class AI {
         score -= engineState.totalPlies * 2;
         report += '\nlong: ' + -(engineState.totalPlies * 2);
 
-        report += '\n\nfinal: ' + score;
+        report += '\n\nfinal: ' + score * side;
         report += '\n\nboard: ';
         for (let index = 0; index < board.length; index++) {
             report += '\n' + board[index].toString();

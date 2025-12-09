@@ -65,6 +65,11 @@ export class ChessRender {
                     sq.classList.add('dark');
                 }
 
+                if (row == 0 && col == 0) sq.classList.add('top-left');
+                else if (row == 0 && col == this.engine.cols - 1) sq.classList.add('top-right');
+                else if (row == this.engine.rows - 1 && col == 0) sq.classList.add('bot-left');
+                else if (row == this.engine.rows - 1 && col == this.engine.cols - 1) sq.classList.add('bot-right');
+
                 sq.onclick = (e) => this.onSquareClick(e);
                 sq.onblur = (e) => this.onSquareBlur(e);
 

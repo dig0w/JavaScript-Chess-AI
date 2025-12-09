@@ -191,16 +191,16 @@ ul {
     color: rgba(0, 0, 0, 0.4);
     font-size: 16px;
 }
-.square[data-file='a'][data-rank='1'] {
+.square.bot-left {
     border-bottom-left-radius: .5rem;
 }
-.square[data-file='h'][data-rank='1'] {
+.square.bot-right {
     border-bottom-right-radius: .5rem;
 }
-.square[data-file='a'][data-rank='8'] {
+.square.top-left {
     border-top-left-radius: .5rem;
 }
-.square[data-file='h'][data-rank='8'] {
+.square.top-right {
     border-top-right-radius: .5rem;
 }
 
