@@ -1,5 +1,26 @@
-                                            End         Nodes       Moves
-My ai (09/12 10:00 d=2) vs Stockfish (chessui.com)    Black Won   53000       70
-                        vs Stockfish (listudy.org)    Black Won   21495       28
+Engines                     10k Moves Avg
+Matrix Engine (1st)         0.04 ms
+Bitboard Engine (2nd)       0.0038 ms
+New Bitboard Enginge (3rd)  0.0034 ms
 
-My ai (09/12 16:20 d=2) vs Stockfish (listudy.org)    Black Won   62317       40
+
+Methods                     Opening     Before              After               Response     Improvement
+Killer Moves (d=2 b)        e4          1244 (134ms)        1244 (131ms)        e5           0%
+Killer Moves (d=4 b)        e4          134746 (10893ms)    69349 (6170ms)      e5           194.3%
+History Heuristic (d=2 b)   e4          1244 (134ms)        1244 (110ms)        e5           0%
+History Heuristic (d=4 b)   e4          134746 (10893ms)    98710 (8281ms)      e5           136.5%
+Killer + History (d=2 b)    e4          1244 (134ms)        1244 (122ms)        e5           0%
+Killer + History (d=4 b)    e4          134746 (10893ms)    61110 (3763ms)      e5           220.5%
+Transposition Table (d=2 b) e4          1244 (134ms)        1244 (122ms)        e5           0%
+Transposition Table (d=4 b) e4          134746 (10893ms)    127217 (7592ms)     e5           105.9%
+All Above (d=2 b)           e4          1244 (134ms)        1244 (109ms)        e5           0%
+All Above (d=4 b)           e4          134746 (10893ms)    59676 (3795ms)      e5           225.8%
+
+
+AIs                                                     End         Nodes   Moves
+My ai (09/12 10:00 d=2) vs Stockfish (listudy.org)      Black Won   21495   28
+
+My ai (09/12 16:20 d=2) vs Stockfish (listudy.org)      Black Won   62317   40
+
+My ai (09/12 21:00 d=2) vs Stockfish (listudy.org)      Black Won   61505   50
+My ai (09/12 21:00 d=4) vs Stockfish (listudy.org)      Black Won   4578510 72

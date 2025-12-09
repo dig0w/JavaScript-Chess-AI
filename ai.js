@@ -76,6 +76,10 @@ export class AI {
             ]
         };
 
+        this.killerMoves = {};
+        this.history = Array.from({ length: engine.rows * engine.cols }, () => new Array(engine.rows * engine.cols).fill(0));
+        this.TT = new Map();
+
         this.nodes = 0;
         this.totalNodes = 0;
     }
@@ -115,7 +119,7 @@ export class AI {
         const copy = engine.clone();
 
         // Move ordering
-        moves.sort((a, b) => this.scoreMove(copy, b) - this.scoreMove(copy, a));
+        moves.sort((a, b) => this.scoreMove(copy, b, depth) - this.scoreMove(copy, a, depth));
 
         let bestScore = -Infinity;
         let bestMove = null;
@@ -151,6 +155,20 @@ export class AI {
     minimax(engineState, depth, alpha, beta, alphaRp, betaRp) {
         this.nodes++;
 
+        // Check TT
+        const alphaOrig = alpha;
+        const key = engineState.zobrist.hash;
+        if (this.TT.has(key)) {
+            const entry = this.TT.get(key);
+
+            if (entry.depth >= depth) {
+                if (entry.flag === 'EXACT') return { score: entry.value, report: 'TT' };
+                if (entry.flag === 'LOWERBOUND') alpha = Math.max(alpha, entry.value);
+                if (entry.flag === 'UPPERBOUND') beta = Math.min(beta, entry.value);
+                if (alpha >= beta) return { score: entry.value, report: 'TT' };
+            }
+        }
+
         // Terminal condition
         if (depth === 0 || engineState.gameCondition !== 'PLAYING') {
             return this.quiescence(engineState, alpha, beta, 0, alphaRp, betaRp);
@@ -160,9 +178,10 @@ export class AI {
             if (moves.length === 0) return this.quiescence(engineState, alpha, beta, 0, alphaRp, betaRp);
 
         // Order moves
-        moves.sort((a, b) => this.scoreMove(engineState, b) - this.scoreMove(engineState, a));
+        moves.sort((a, b) => this.scoreMove(engineState, b, depth) - this.scoreMove(engineState, a, depth));
 
         let best = -Infinity;
+        let bestMove = null;
         let bestRp = '';
 
         for (const move of moves) {
@@ -179,6 +198,7 @@ export class AI {
 
             if (score > best) {
                 best = score;
+                bestMove = move;
                 bestRp = report;
             }
             if (score > alpha) {
@@ -186,15 +206,43 @@ export class AI {
                 alphaRp = report;
             }
 
-            if (alpha >= beta) break; // alpha–beta cutoff
+            if (alpha >= beta) {
+                // Store killer move
+                if (!this.killerMoves[depth]) this.killerMoves[depth] = [];
+                const km = this.killerMoves[depth];
+                if (!km.some(k => k.fr === move.fr && k.fc === move.fc && k.tr === move.tr && k.tc === move.tc && k.promote === move.promote)) {
+                    km.unshift({ fr: move.fr, fc: move.fc, tr: move.tr, tc: move.tc, promote: move.promote });
+                    if (km.length > 2) km.pop();
+                }
+
+                // Store History
+                const targetBefore = engineState.getPiece(move.tr, move.tc);
+                const isCapture = !engineState.isEmpty(targetBefore);
+
+                if (!isCapture && !move.promote) {
+                    const idxFrom = move.fr * engineState.cols + move.fc;
+                    const idxTo   = move.tr * engineState.cols + move.tc;
+
+                    this.history[idxFrom][idxTo] += depth ^ 2;
+                }
+
+                break; // alpha–beta cutoff
+            }
         }
+
+        // Store in TT
+        let flag = 'EXACT';
+        if (best <= alphaOrig) flag = 'UPPERBOUND';
+        else if (best >= beta) flag = 'LOWERBOUND';
+        this.TT.set(key, { value: best, depth, flag, bestMove });
+
 
         if (best == -Infinity) return this.quiescence(engineState, alpha, beta, 0, alphaRp, betaRp);
 
         return { score: best, report: bestRp };
     }
 
-    scoreMove(engineState, move) {
+    scoreMove(engineState, move, depthKey = -1) {
         const target = engineState.getPiece(move.tr, move.tc);
         const moving = engineState.getPiece(move.fr, move.fc);
 
@@ -212,6 +260,24 @@ export class AI {
 
         // 3. Checks
         if (!engineState.moveKeepsKingSafe(move.fr, move.fc, move.tr, move.tc, true)) score += 50;
+
+        // 4. Killer move heuristic
+        const km = this.killerMoves[depthKey];
+        if (km) {
+            for (let i = 0; i < km.length; i++) {
+                const k = km[i];
+                if (k.fr === move.fr && k.fc === move.fc && k.tr === move.tr && k.tc === move.tc && k.promote === move.promote) {
+                    score += (i === 0) ? 1500 : 1000;
+                }
+            }
+        }
+
+        // 5. History heuristic
+        if (engineState.isEmpty(target) && !move.promote) {
+            const fromIdx = move.fr * engineState.cols + move.fc;
+            const toIdx = move.tr * engineState.cols + move.tc;
+            score += this.history[fromIdx][toIdx];
+        }
 
         return score;
     }
