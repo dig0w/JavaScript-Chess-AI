@@ -15,11 +15,14 @@ export class ChessEngine {
     static initialized = false;
 
     constructor(board = [
-        ['r', 'n', 'b', 'q', 'k'],
-        ['p', 'p', 'p', 'p', 'p'],
-        ['.', '.', '.', '.', '.'],
-        ['P', 'P', 'P', 'P', 'P'],
-        ['R', 'N', 'B', 'Q', 'K']
+        ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
+        ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
+        ['.', '.', '.', '.', '.', '.', '.', '.'],
+        ['.', '.', '.', '.', '.', '.', '.', '.'],
+        ['.', '.', '.', '.', '.', '.', '.', '.'],
+        ['.', '.', '.', '.', '.', '.', '.', '.'],
+        ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'],
+        ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
     ]) {
         this.rows = board.length;
         this.cols = board[0].length;
@@ -230,6 +233,12 @@ export class ChessEngine {
             if (fr === 7 && fc === 7) this.castlingRights.whiteKingSide = false;
             if (fr === 0 && fc === 0) this.castlingRights.blackQueenSide = false;
             if (fr === 0 && fc === 7) this.castlingRights.blackKingSide = false;
+        }
+        if (isCapture && targetPiece.toLowerCase() === 'r') {
+            if (tr === 7 && tc === 0) this.castlingRights.whiteQueenSide = false;
+            if (tr === 7 && tc === 7) this.castlingRights.whiteKingSide = false;
+            if (tr === 0 && tc === 0) this.castlingRights.blackQueenSide = false;
+            if (tr === 0 && tc === 7) this.castlingRights.blackKingSide = false;
         }
         this.zobrist.xorCastleRights(this.castlingRights);
 
