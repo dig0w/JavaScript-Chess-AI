@@ -392,16 +392,16 @@ export class AI {
         score += engineState.castlingRights.whiteQueenSide ? 5 : -5;
         score += engineState.castlingRights.blackKingSide ? -5 : 5;
         score += engineState.castlingRights.blackQueenSide ? -5 : 5;
-        report += '\nwK: ' + engineState.castlingRights.whiteKingSide ? 5 : -5;
-        report += '\nwQ: ' + engineState.castlingRights.whiteQueenSide ? 5 : -5;
-        report += '\nbK: ' + engineState.castlingRights.blackKingSide ? -5 : 5;
-        report += '\nbQ: ' + engineState.castlingRights.blackQueenSide ? -5 : 5;
+        report += '\n\nwhite King: ' + (engineState.castlingRights.whiteKingSide ? 5 : -5);
+        report += '\nwhite Queen: ' + (engineState.castlingRights.whiteQueenSide ? 5 : -5);
+        report += '\nblack King: ' + (engineState.castlingRights.blackKingSide ? -5 : 5);
+        report += '\nblack Queen: ' + (engineState.castlingRights.blackQueenSide ? -5 : 5);
 
         // Mobility
         const whiteMoves = engineState.getPlayerLegalMoves(true);
         const blackMoves = engineState.getPlayerLegalMoves(false);
         score += (whiteMoves.length - blackMoves.length) * 5;
-        report += '\nmobility: ' + (whiteMoves.length - blackMoves.length) * 5;
+        report += '\n\nmobility: ' + (whiteMoves.length - blackMoves.length) * 5;
 
         // Discourage long games
         score -= engineState.totalPlies * 2;

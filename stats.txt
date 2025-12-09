@@ -1,0 +1,3 @@
+                                            End         Nodes       Moves
+My ai (09/12) vs Stockfish (chessui.com)    Black Won   53000       70
+My ai (09/12) vs Stockfish (listudy.org)    Black Won   21495       28
