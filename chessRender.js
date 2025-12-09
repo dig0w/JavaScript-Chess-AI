@@ -13,8 +13,10 @@ export class ChessRender {
         this.endScreen = null;
 
         this.lastSelected = null;
-        this.blurredTime = null;
         this.lastPromote = null;
+
+        this.dragging = false;
+        this.dragEl = null;
 
         this.whiteCapturesEl = null;
         this.whiteCaptures = [];
@@ -43,13 +45,17 @@ export class ChessRender {
         this.whiteCapturesEl = document.getElementById('whiteOpponent').children[1];
         this.blackCapturesEl = document.getElementById('blackOpponent').children[1];
         this.promotionScreen = document.getElementById('promotion-screen');
+        this.dragEl = document.getElementById('drag-piece');
         this.endScreen = document.getElementById('end-screen');
 
         this.boardEl.style.gridTemplateRows = `repeat(${this.engine.rows}, minmax(0, 1fr))`;
         this.boardEl.style.gridTemplateColumns = `repeat(${this.engine.cols}, minmax(0, 1fr))`;
-        
-        this.promotionScreen.style.height = (100 / this.engine.rows) * 4 + '%';
+
+        this.promotionScreen.style.height = (100 / this.engine.rows) * this.engine.promoPieces.length + '%';
         this.promotionScreen.style.width = 100 / this.engine.cols + '%';
+
+        this.dragEl.style.height = (100 / this.engine.rows) + '%';
+        this.dragEl.style.width = 100 / this.engine.cols + '%';
 
         for (let row = 0; row < this.engine.rows; row++) {
             for (let col = 0; col < this.engine.cols; col++) {
@@ -70,8 +76,7 @@ export class ChessRender {
                 else if (row == this.engine.rows - 1 && col == 0) sq.classList.add('bot-left');
                 else if (row == this.engine.rows - 1 && col == this.engine.cols - 1) sq.classList.add('bot-right');
 
-                sq.onclick = (e) => this.onSquareClick(e);
-                sq.onblur = (e) => this.onSquareBlur(e);
+                // sq.onmousedown = (e) => this.onSquareClick(e);
 
                 this.boardEl.appendChild(sq);
 
@@ -81,30 +86,13 @@ export class ChessRender {
 
         this.UpdateGame();
 
-        for (let i = 0; i < this.promotionScreen.children.length; i++) {
-            this.promotionScreen.children[i].onclick = (e) => this.onPromoClick(e);
-            this.promotionScreen.children[i].onblur = (e) => this.onPromoBlur(e);
-        }
-
         for (let i = 0; i < this.sounds.length; i++) {
             this.playableSounds.push(new Audio(this.sounds[i]));
         }
 
-        document.addEventListener('click', (e) => {
-            if (!e.target.classList.contains('square')) {
-                if (this.lastSelected !== null) {
-                    this.lastSelected = null;
-                    this.desHighlightMoves();
-                }
-            }
-
-            if (!e.target.classList.contains('square') || (e.target.classList.contains('square') && !e.target.classList.contains('promotion'))) {
-                if (this.lastPromote !== null) {
-                    this.lastPromote = null;
-                    this.promotionScreen.classList.add('hidden');
-                }
-            }
-        });
+        document.addEventListener('mousedown', (e) => this.onMouseDown(e));
+        document.addEventListener('mousemove', (e) => this.onMouseMove(e));
+        document.addEventListener('mouseup', (e) => this.onMouseUp(e));
     }
 
 
@@ -229,14 +217,60 @@ export class ChessRender {
     }
 
 
-    onSquareClick(e) {
-        // Case 0: not his turn -> deselect
-        if ((this.engine.turn == 0 && this.engine.whiteAI != null) || (this.engine.turn == 1 && this.engine.blackAI != null)) {
-            console.log('AIs turn');
+    onMouseDown(e) {
+        let selected = false;
+        if (e.target.classList.contains('square')) selected = this.onSquareClick(e);
+        if (!e.target.classList.contains('square') || !selected) {
             this.lastSelected = null;
             this.desHighlightMoves();
-            e.target.blur();
-            return;
+        }
+
+        if (e.target.classList.contains('square') && e.target.classList.contains('promotion')) this.onPromoClick(e);
+        this.lastPromote = null;
+        this.promotionScreen.classList.add('hidden');
+
+        if (selected && this.lastSelected) {
+            this.dragging = true;
+
+            this.dragEl.classList.remove('hidden');
+
+            const sq = document.querySelector(`.square[data-row="${this.lastSelected.row}"][data-col="${this.lastSelected.col}"]`);
+            this.dragEl.style.setProperty('--bg-img', sq.style.getPropertyValue('--bg-img'));
+
+            this.onMouseMove(e);
+        }
+    }
+
+    onMouseMove(e) {
+        if (this.dragging) {
+            const rect = this.boardEl.getBoundingClientRect();
+
+            this.dragEl.style.left = e.clientX - rect.left + 'px';
+            this.dragEl.style.top = e.clientY - rect.top + 'px';
+        }
+    }
+
+    onMouseUp(e) {
+        if (this.dragging) {
+            this.dragEl.classList.add('hidden');
+            this.dragging = false;
+
+            const target = document.elementFromPoint(e.clientX, e.clientY);
+
+            const selected = this.onSquareClick({ target });
+            if (!selected) {
+                this.lastSelected = null;
+                this.desHighlightMoves();
+            }
+        }
+    }
+
+    onSquareClick(e) {
+        // Case 1: not his turn -> deselect
+        if ((this.engine.turn == 0 && this.engine.whiteAI != null) || (this.engine.turn == 1 && this.engine.blackAI != null)) {
+            console.log('AIs turn');
+
+            return false;
         }
 
         const row = +e.target.dataset.row;
@@ -247,33 +281,15 @@ export class ChessRender {
             this.lastSelected.row === row &&
             this.lastSelected.col === col;
 
-        // Case 1: clicking same square -> deselect
-        if (clickedSame) {
-            console.log('Deselected same square');
-            this.lastSelected = null;
-            this.desHighlightMoves();
-            e.target.blur();
-            return;
-        }
-
-        // Case 2: blur happened too recently -> avoid unwanted deselection
-        if ((new Date() - this.blurredTime) >= 300 && this.lastSelected !== null) {
-            console.log('Deselected due to blur timing');
-            this.lastSelected = null;
-            this.desHighlightMoves();
-            e.target.blur();
-            return;
-        }
+        // Case 2: clicking same square -> ignore
+        if (clickedSame) return true;
 
         // Case 3: has previous target and a valid new target -> move piece
         if (this.lastSelected != null && e.target.classList.contains('highlight')) {
             console.log('Move from', this.lastSelected?.row, this.lastSelected?.col, 'to', row, col);
             this.engine.MovePiece(this.lastSelected?.row, this.lastSelected?.col, row, col);
 
-            this.lastSelected = null;
-            this.desHighlightMoves();
-            e.target.blur();
-            return;
+            return false;
         }
 
         const piece = this.engine.getPiece(row, col);
@@ -281,29 +297,23 @@ export class ChessRender {
         // Case 4: click on empty square -> clear selection
         if (this.engine.isEmpty(piece)) {
             console.log('Clicked empty -> clear selection');
-            this.lastSelected = null;
-            this.desHighlightMoves();
-            e.target.blur();
-            return;
+
+            return false;
         }
 
         // Case 5: click on piece of the oponent → clear selection
         if ((this.engine.isWhite(piece) && this.engine.turn != 0) || (this.engine.isBlack(piece) && this.engine.turn != 1)) {
             console.log('Clicked oponent piece -> clear selection');
-            this.lastSelected = null;
-            this.desHighlightMoves();
-            e.target.blur();
-            return;
+
+            return false;
         }
 
         // Case 6: click on a piece -> select        
         this.lastSelected = { row, col };
 
         this.highlightMoves(row, col);
-    }
 
-    onSquareBlur(e) {
-        this.blurredTime = new Date();
+        return true;
     }
 
     highlightMoves(row, col) {
@@ -360,10 +370,6 @@ export class ChessRender {
         this.lastPromote = null;
         this.promotionScreen.classList.add('hidden');
         e.target.blur();
-    }
-
-    onPromoBlur(e) {
-        this.blurredTime = new Date();
     }
 
 

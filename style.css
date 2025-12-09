@@ -204,6 +204,28 @@ ul {
     border-top-right-radius: .5rem;
 }
 
+.drag-piece {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 10;
+
+    width: 100%;
+    height: 100%;
+
+    --bg-img: none;
+    background-image: var(--bg-img);
+    background-size: cover;
+    background-color: transparent;
+
+    translate: -50% -50%;
+
+    cursor: grab;
+}
+.drag-piece.hidden {
+    display: none;
+}
+
 .game-container .main .opponent {
     margin: .5rem 0;
 
@@ -282,7 +304,7 @@ ul {
 
 .popup-card {
     position: fixed;
-    z-index: 10;
+    z-index: 90;
 
     width: 100vw;
     height: 100vh;
@@ -360,7 +382,7 @@ ul {
 
 .popup-promotion {
     position: absolute;
-    z-index: 10;
+    z-index: 20;
     top: auto;
     left: 0;
 

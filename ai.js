@@ -121,10 +121,6 @@ export class AI {
         let bestMove = null;
         let bestRp;
 
-        let gC;
-        let hash;
-        let nRC;
-
         for (const move of moves) {
             const moved = copy.MovePiece(move.fr, move.fc, move.tr, move.tc, move.promote);
             if (!moved) continue;
@@ -134,7 +130,7 @@ export class AI {
 
             copy.undoMove();
 
-            // console.log(move, score);
+            console.log(move, score);
 
             if (score > bestScore) {
                 bestScore = score;
@@ -271,9 +267,10 @@ export class AI {
         let report = '';
 
         const rows = engineState.rows;
+        const cols = engineState.cols;
         const pieces = engineState.pieces;
 
-        const board = Array.from({ length: rows }, () => Array.from({ length: rows }, () => '.'));
+        const board = Array.from({ length: rows }, () => Array.from({ length: cols }, () => '.'));
 
         const whitePawns = pieces['P'].clone();
         const blackPawns = pieces['p'].clone();
@@ -304,42 +301,41 @@ export class AI {
                 // score += pstValue;
                 // report += '\npst bonus: ' + pstValue;
 
-                // Safety
-                if (typeChar !== 'K' && typeChar !== 'P') {
-                    const attackers = engineState.getSquareAttacks(r, c, !isWhite);
-                    const defenders = engineState.getSquareAttacks(r, c, isWhite);
+                // // Safety
+                // if (typeChar !== 'K' && typeChar !== 'P') {
+                //     const attackers = engineState.getSquareAttacks(r, c, !isWhite);
+                //     const defenders = engineState.getSquareAttacks(r, c, isWhite);
 
-                    let Avalue = 0;
-                    let Dvalue = 0;
+                //     let Avalue = 0;
+                //     let Dvalue = 0;
 
-                    const sumPieceValues = (bb) => {
-                        let total = 0;
-                        for (const [p, pBB] of Object.entries(pieces)) {
-                            const typeChar = p.toUpperCase();
+                //     const sumPieceValues = (bb) => {
+                //         let total = 0;
+                //         for (const [p, pBB] of Object.entries(pieces)) {
+                //             const typeChar = p.toUpperCase();
 
-                            const val = typeChar === 'K' ? 0 : (this.pieceValues[typeChar] || 0);
+                //             const val = typeChar === 'K' ? 0 : (this.pieceValues[typeChar] || 0);
 
-                            const masked = bb.and ? bb.and(pBB) : bb.and(bb, pBB);
-                            total += masked.popcount() * val;
-                        }
-                        return total;
-                    }
+                //             const masked = bb.and ? bb.and(pBB) : bb.and(bb, pBB);
+                //             total += masked.popcount() * val;
+                //         }
+                //         return total;
+                //     }
 
-                    Avalue = sumPieceValues(attackers);
-                    Dvalue = sumPieceValues(defenders);
+                //     Avalue = sumPieceValues(attackers);
+                //     Dvalue = sumPieceValues(defenders);
 
-                    const safetyValue = Dvalue - Avalue;
-                    report += '\nsafetyValue: ' + safetyValue;
-                    if (safetyValue !== 0) {
-                        score += -dir * safetyValue;
-                        report += '\nsafety: ' + -dir * safetyValue;
-                    }
-                }
+                //     const safetyValue = Dvalue - Avalue;
+                //     if (safetyValue !== 0) {
+                //         score += -dir * safetyValue * .5;
+                //         report += '\nsafety: ' + -dir * safetyValue * .5;
+                //     }
+                // }
 
-                const pawnsOnFile = pawnsBB.popcount32(pawnsBB.and(ChessEngine.fileMasks[c]));
+                const pawnsOnFile = pawnsBB.and(ChessEngine.fileMasks[c]).popcount();
                 const ownPawnsOnFile = isWhite ?
-                                        whitePawns.popcount32(whitePawns.and(ChessEngine.fileMasks[c])) :
-                                        blackPawns.popcount32(blackPawns.and(ChessEngine.fileMasks[c]));
+                                        whitePawns.and(ChessEngine.fileMasks[c]).popcount() :
+                                        blackPawns.and(ChessEngine.fileMasks[c]).popcount();
 
                 // Piece Types
                 switch (typeChar) {
@@ -357,16 +353,23 @@ export class AI {
                         }
                         break;
                     case 'N':
+                        // Distance to middle
+                        const dr = r - ((rows - 1) / 2);
+                        const dc = c - ((cols - 1) / 2);
+                        const distance = Math.sqrt(dr * dr + dc * dc);
+
+                        score += dir * -distance * 5;
+                        report += '\nknight to middle: ' + dir * -distance * 5;
                         break;
                     case 'B':
                         break;
                     case 'R':
                         if (pawnsOnFile === 0) { // Open file bonus
                             score += dir * 20;
-                            report += '\nopen rook: ' + dir * 20;
+                            report += '\nopen rook: ' + dir * 20 + ' | ' + pawnsOnFile;
                         } else if (ownPawnsOnFile === 0) { // Semi-open file bonus
                             score += dir * 10;
-                            report += '\nsemi open rook: ' + dir * 10;
+                            report += '\nsemi open rook: ' + dir * 10 + ' | ' + ownPawnsOnFile;
                         }
                         break;
                     case 'Q':
@@ -374,10 +377,10 @@ export class AI {
                     case 'K':
                         if (pawnsOnFile === 0) { // Open file bonus
                             score += -dir * 35;
-                            report += '\nopen king: ' + -dir * 35;
+                            report += '\nopen king: ' + -dir * 35 + ' | ' + pawnsOnFile;
                         } else if (ownPawnsOnFile === 0) { // Semi-open file bonus
                             score += -dir * 20;
-                            report += '\nsemi open king: ' + -dir * 20;
+                            report += '\nsemi open king: ' + -dir * 20 + ' | ' + ownPawnsOnFile;
                         }
                         break;
                 }
@@ -400,8 +403,8 @@ export class AI {
         // Mobility
         const whiteMoves = engineState.getPlayerLegalMoves(true);
         const blackMoves = engineState.getPlayerLegalMoves(false);
-        score += (whiteMoves.length - blackMoves.length) * 5;
-        report += '\n\nmobility: ' + (whiteMoves.length - blackMoves.length) * 5;
+        score += (whiteMoves.length - blackMoves.length) * 10;
+        report += '\n\nmobility: ' + (whiteMoves.length - blackMoves.length) * 10;
 
         // Discourage long games
         score -= engineState.totalPlies * 2;

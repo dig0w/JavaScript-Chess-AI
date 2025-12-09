@@ -1,0 +1,10 @@
+killer move heuristic
+history heuristic
+Transposition Table
+
+Iterative Deepening
+
+Null-move pruning
+Late Move Reductions
+
+evaluateLite for deep depth (depth > 2)

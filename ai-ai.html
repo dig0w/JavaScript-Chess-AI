@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI vs AI | Mini Chess</title>
 
-    <link rel="stylesheet" href="./assets/style.css">
+    <link rel="stylesheet" href="./style.css">
 </head>
 
 <body>
@@ -27,12 +27,13 @@
                 </div>
             </div>
             <div id="board" class="board">
-                    <section id="promotion-screen" class="popup-promotion hidden">
-                        <button data-piece="q" class="square promotion queen"></button>
-                        <button data-piece="n" class="square promotion knight"></button>
-                        <button data-piece="r" class="square promotion rook"></button>
-                        <button data-piece="b" class="square promotion bishop"></button>
-                    </section>
+                <section id="promotion-screen" class="popup-promotion hidden">
+                    <button data-piece="q" class="square promotion queen"></button>
+                    <button data-piece="n" class="square promotion knight"></button>
+                    <button data-piece="r" class="square promotion rook"></button>
+                    <button data-piece="b" class="square promotion bishop"></button>
+                </section>
+                <div id="drag-piece" class="drag-piece hidden"></div>
             </div>
             <div id="whiteOpponent" class="opponent">
                 <h1>White</h1>
