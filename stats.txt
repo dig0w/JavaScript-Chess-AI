@@ -16,6 +16,10 @@ Transposition Table (d=4 b) e4          134746 (10893ms)    127217 (7592ms)     
 All Above (d=2 b)           e4          1244 (134ms)        1244 (109ms)        e5           0%
 All Above (d=4 b)           e4          134746 (10893ms)    59676 (3795ms)      e5           225.8%
 
+Futility Pruning (d=4 b)    e4          60273 (3687ms)      32122 (2548ms)      e5           187.6%
+Delta Pruning (d=4 b)       e4          60273 (3687ms)      59114 (3450ms)      e5           102%
+Both Pruning (d=4 b)        e4          60273 (3687ms)      31826 (2483ms)      e5           189.4%
+
 
 AIs                                                     End         Nodes   Moves
 My ai (09/12 10:00 d=2) vs Stockfish (listudy.org)      Black Won   21495   28
@@ -24,3 +28,4 @@ My ai (09/12 16:20 d=2) vs Stockfish (listudy.org)      Black Won   62317   40
 
 My ai (09/12 21:00 d=2) vs Stockfish (listudy.org)      Black Won   61505   50
 My ai (09/12 21:00 d=4) vs Stockfish (listudy.org)      Black Won   4578510 72
+My ai (11/12 21:00 d=4) vs Stockfish (listudy.org)      Black Won   1480213 52

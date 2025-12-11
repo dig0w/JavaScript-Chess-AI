@@ -174,6 +174,20 @@ export class AI {
             return this.quiescence(engineState, alpha, beta, 0, alphaRp, betaRp);
         }
 
+        // Futility Prune
+        let futilityPrune = false;
+        if (depth === 1) {
+            const standPat = this.evaluate(engineState).score;
+
+            const futilityMargin = 150;
+            const isChecked = engineState.isKingInCheck(engineState.turn === 0);
+
+            // If eval is so bad that even a quiet move can't raise alpha
+            if (!isChecked && standPat + futilityMargin <= alpha) {
+                futilityPrune = true;
+            }
+        }
+
         let moves = engineState.getPlayerLegalMoves(engineState.turn === 0);
             if (moves.length === 0) return this.quiescence(engineState, alpha, beta, 0, alphaRp, betaRp);
 
@@ -185,6 +199,15 @@ export class AI {
         let bestRp = '';
 
         for (const move of moves) {
+            // Futility prune
+            if (futilityPrune) {
+                const target = engineState.getPiece(move.tr, move.tc);
+                const isCapture = !engineState.isEmpty(target);
+                const isPromotion = !!move.promote;
+
+                if (!isCapture && !isPromotion) continue; // prune quiet move
+            }
+
             const moved = engineState.MovePiece(move.fr, move.fc, move.tr, move.tc, move.promote);
             if (!moved) continue;
 
@@ -236,7 +259,6 @@ export class AI {
         else if (best >= beta) flag = 'LOWERBOUND';
         this.TT.set(key, { value: best, depth, flag, bestMove });
 
-
         if (best == -Infinity) return this.quiescence(engineState, alpha, beta, 0, alphaRp, betaRp);
 
         return { score: best, report: bestRp };
@@ -267,7 +289,7 @@ export class AI {
             for (let i = 0; i < km.length; i++) {
                 const k = km[i];
                 if (k.fr === move.fr && k.fc === move.fc && k.tr === move.tr && k.tc === move.tc && k.promote === move.promote) {
-                    score += (i === 0) ? 1500 : 1000;
+                    score += (i === 0) ? 750 : 500;
                 }
             }
         }
@@ -301,6 +323,18 @@ export class AI {
         moves.sort((a, b) => this.scoreMove(engineState, b) - this.scoreMove(engineState, a));
 
         for (const move of moves) {
+            // Delta Prune
+            const target = engineState.getPiece(move.tr, move.tc);
+            if (engineState.isEmpty(target) === false) {
+                const victimValue = this.pieceValues[target.toUpperCase()] || 0;
+                const deltaMargin = 100; // small safety buffer
+
+                // If even the best-case gain can't reach alpha → prune
+                if (standPat + victimValue + deltaMargin < alpha) {
+                    continue;
+                }
+            }
+
             const moved = engineState.MovePiece(move.fr, move.fc, move.tr, move.tc, move.promote);
             if (!moved) continue;
 

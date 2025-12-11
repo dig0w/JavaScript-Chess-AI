@@ -1,7 +1,11 @@
 Iterative Deepening
 
-Null-move pruning
 Late Move Reductions
+Null-move pruning
+
+Static Exchange Evaluation
+
+Razoring
 
 evaluateLite for deep depth (depth > 2)
 
