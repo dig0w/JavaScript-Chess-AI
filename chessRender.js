@@ -236,6 +236,7 @@ export class ChessRender {
 
             const sq = document.querySelector(`.square[data-row="${this.lastSelected.row}"][data-col="${this.lastSelected.col}"]`);
             this.dragEl.style.setProperty('--bg-img', sq.style.getPropertyValue('--bg-img'));
+            sq.style.setProperty('--bg-img', ``);
 
             this.onMouseMove(e);
         }
@@ -255,8 +256,11 @@ export class ChessRender {
             this.dragEl.classList.add('hidden');
             this.dragging = false;
 
-            const target = document.elementFromPoint(e.clientX, e.clientY);
+            const sq = document.querySelector(`.square[data-row="${this.lastSelected.row}"][data-col="${this.lastSelected.col}"]`);
+            sq.style.setProperty('--bg-img', this.dragEl.style.getPropertyValue('--bg-img'));
+            this.dragEl.style.setProperty('--bg-img', ``);
 
+            const target = document.elementFromPoint(e.clientX, e.clientY);
             const selected = this.onSquareClick({ target });
             if (!selected) {
                 this.lastSelected = null;
