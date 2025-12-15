@@ -139,7 +139,7 @@ export class ChessRender {
         }
 
         const whiteDiff = this.whitePoints - this.blackPoints;
-        this.whiteCapturesEl.children[1].textContent = whiteDiff === 0 ? '' : (whiteDiff > 0 ? `+${whiteDiff}` : `${whiteDiff}`);
+        this.whiteCapturesEl.children[1].textContent = whiteDiff === 0 ? '⠀' : (whiteDiff > 0 ? `+${whiteDiff}` : `${whiteDiff}`);
 
 
         this.blackCapturesEl.children[0].innerHTML = '';
@@ -151,7 +151,7 @@ export class ChessRender {
         }
 
         const blackDiff = -whiteDiff;
-        this.blackCapturesEl.children[1].textContent = blackDiff === 0 ? '' : (blackDiff > 0 ? `+${blackDiff}` : `${blackDiff}`);
+        this.blackCapturesEl.children[1].textContent = blackDiff === 0 ? '⠀' : (blackDiff > 0 ? `+${blackDiff}` : `${blackDiff}`);
 
         // Checks
         document.querySelectorAll('.checked').forEach(sq => sq.classList.remove('checked'));
