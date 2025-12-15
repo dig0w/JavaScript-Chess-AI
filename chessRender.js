@@ -27,7 +27,7 @@ export class ChessRender {
         this.blackPoints = 0;
         this.blackKingChecked = false;
 
-        this.assetPrefix = '../assets/chess.com_';
+        this.assetPrefix = './assets/chess.com_';
         this.sounds = [
             this.assetPrefix + 'move-self' + '.webm',
             this.assetPrefix + 'capture' + '.webm',
