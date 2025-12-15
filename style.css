@@ -425,30 +425,6 @@ ul {
 .popup-promotion .square:hover, .popup-promotion .square:focus {
     background-color: rgba(var(--background-white-color), 0.5);
 }
-.popup-promotion .square.queen {
-    background-image: url(./assets/chess.com_wq.png);
-}
-.popup-promotion.black .square.queen {
-    background-image: url(./assets/chess.com_bq.png);
-}
-.popup-promotion .square.knight {
-    background-image: url(./assets/chess.com_wn.png);
-}
-.popup-promotion.black .square.knight {
-    background-image: url(./assets/chess.com_bn.png);
-}
-.popup-promotion .square.rook {
-    background-image: url(./assets/chess.com_wr.png);
-}
-.popup-promotion.black .square.rook {
-    background-image: url(./assets/chess.com_br.png);
-}
-.popup-promotion .square.bishop {
-    background-image: url(./assets/chess.com_wb.png);
-}
-.popup-promotion.black .square.bishop {
-    background-image: url(./assets/chess.com_bb.png);
-}
 
 .back {
     position: fixed;
