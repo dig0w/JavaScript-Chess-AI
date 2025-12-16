@@ -1,4 +1,4 @@
-import { delay } from '../utils.js';
+import { delay } from './utils.js';
 
 export class ChessRender {
     constructor(engine = null) {
@@ -27,7 +27,7 @@ export class ChessRender {
         this.blackPoints = 0;
         this.blackKingChecked = false;
 
-        this.assetPrefix = '../assets/chess.com_';
+        this.assetPrefix = './assets/chess.com_';
         this.sounds = [
             this.assetPrefix + 'move-self' + '.webm',
             this.assetPrefix + 'capture' + '.webm',
@@ -50,9 +50,6 @@ export class ChessRender {
 
         this.boardEl.style.gridTemplateRows = `repeat(${this.engine.rows}, minmax(0, 1fr))`;
         this.boardEl.style.gridTemplateColumns = `repeat(${this.engine.cols}, minmax(0, 1fr))`;
-
-        this.promotionScreen.style.height = (100 / this.engine.rows) * this.engine.promoPieces.length + '%';
-        this.promotionScreen.style.width = 100 / this.engine.cols + '%';
 
         this.dragEl.style.height = (100 / this.engine.rows) + '%';
         this.dragEl.style.width = 100 / this.engine.cols + '%';
@@ -88,6 +85,22 @@ export class ChessRender {
 
         for (let i = 0; i < this.sounds.length; i++) {
             this.playableSounds.push(new Audio(this.sounds[i]));
+        }
+
+        this.promotionScreen.style.height = (100 / this.engine.rows) * this.engine.promoPieces.length + '%';
+        this.promotionScreen.style.width = 100 / this.engine.cols + '%';
+
+        for (let i = 0; i < this.engine.promoPieces.length; i++) {
+            const promoPiece = this.engine.promoPieces[i];
+
+            const pmSq = document.createElement('button');
+            pmSq.classList.add('square');
+            pmSq.classList.add('promotion');
+            pmSq.dataset.piece = promoPiece;
+
+            this.promotionScreen.appendChild(pmSq);
+
+            // <button data-piece="q" class="square promotion queen"></button>
         }
 
         document.addEventListener('mousedown', (e) => this.onMouseDown(e));
@@ -353,6 +366,17 @@ export class ChessRender {
 
         // Apply transform
         this.promotionScreen.style.transform = `translate(${tc * 100}%, ${y}%)`;
+
+        for (const promoBtn of this.promotionScreen.children) {
+            const promoPiece = promoBtn.dataset.piece;
+
+            if (promoPiece == '.') {
+                promoBtn.style.setProperty('--bg-img', ``);
+                return;
+            }
+
+            promoBtn.style.setProperty('--bg-img', `url(${this.assetPrefix + (isBlack ? 'b' : 'w') + promoPiece.toLowerCase()}.png)`);
+        }
 
         if (isBlack) this.promotionScreen.classList.add('black');
 
