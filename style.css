@@ -479,6 +479,7 @@ ul {
     }
     .game-container .sidebar .log ul {
         padding-right: 0;
+        padding-bottom: 1rem;
 
         grid-auto-flow: column;
         grid-template-columns: unset;
@@ -488,5 +489,9 @@ ul {
 
         overflow-y: hidden;
         overflow-x: auto;
+    }
+    .game-container .sidebar .log ul li {
+        text-align: center;
+        width: 100%;
     }
 }
