@@ -2,7 +2,7 @@ import { delay } from './utils.js';
 import { ChessEngine } from './chessEngine.js';
 
 export class AI {
-    constructor(engine = null, playsWhite = false, depth = 7) {
+    constructor(engine = null, playsWhite = false, depth = 4) {
         this.engine = engine;
         this.playsWhite = playsWhite;
 
