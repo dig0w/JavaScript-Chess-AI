@@ -91,9 +91,8 @@
     const chess = new ChessEngine();
     const render = new ChessRender(chess);
 
-    const depth = 4;
-    const AIW = new AI(chess, true, depth);
-    const AIB = new AI(chess, false, depth);
+    const AIW = new AI(chess, true);
+    const AIB = new AI(chess, false);
 
     window.onload = async (e) => {
         render.BeginPlay();

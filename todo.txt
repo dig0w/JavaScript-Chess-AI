@@ -1,7 +1,8 @@
 Iterative Deepening
 
-Late Move Reductions
 Null-move pruning
+
+History-based LMR
 
 Static Exchange Evaluation
 

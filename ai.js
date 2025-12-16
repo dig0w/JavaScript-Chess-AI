@@ -2,7 +2,7 @@ import { delay } from './utils.js';
 import { ChessEngine } from './chessEngine.js';
 
 export class AI {
-    constructor(engine = null, playsWhite = false, depth = 2) {
+    constructor(engine = null, playsWhite = false, depth = 4) {
         this.engine = engine;
         this.playsWhite = playsWhite;
 
@@ -96,7 +96,7 @@ export class AI {
 
         this.nodes = 0;
 
-        const best = this.bestMove(this.depth);
+        const best = this.bestMove();
             if (!best) return; // no legal moves
 
         this.totalNodes += this.nodes;
@@ -108,7 +108,7 @@ export class AI {
         this.engine.MovePiece(best.fr, best.fc, best.tr, best.tc, best.promote);
     }
 
-    bestMove(depth) {
+    bestMove(depth = this.depth) {
         const engine = this.engine;
         const moves = engine.getPlayerLegalMoves(engine.turn === 0);
             if (moves.length == 0) {
@@ -198,21 +198,46 @@ export class AI {
         let bestMove = null;
         let bestRp = '';
 
-        for (const move of moves) {
-            // Futility prune
-            if (futilityPrune) {
-                const target = engineState.getPiece(move.tr, move.tc);
-                const isCapture = !engineState.isEmpty(target);
-                const isPromotion = !!move.promote;
+        let moveIndex = 0;
 
-                if (!isCapture && !isPromotion) continue; // prune quiet move
-            }
+        for (const move of moves) {
+            moveIndex++;
+
+            const target = engineState.getPiece(move.tr, move.tc);
+            const isCapture = !engineState.isEmpty(target);
+            const isPromotion = !!move.promote;
+
+            // Futility prune
+            if (futilityPrune && !isCapture && !isPromotion) continue; // prune quiet move
 
             const moved = engineState.MovePiece(move.fr, move.fc, move.tr, move.tc, move.promote);
             if (!moved) continue;
 
-            // Negamax
-            let { score, report } = this.minimax(engineState, depth - 1, -beta, -alpha, betaRp, alphaRp);
+            let score;
+            let report;
+
+            // Late Move Reduction
+            if (depth >= 3 && moveIndex >= 4 && !isCapture && !isPromotion) {
+                // Reduced search
+                const { score: score1, report: report1 } = this.minimax(engineState, depth - 2, -alpha - 1, -alpha);
+                score = score1;
+                report = report1;
+
+                // Re-search if it improved alpha
+                if (score > alpha) {
+                    const { score: score2, report: report2 } = this.minimax(engineState, depth - 1, -beta, -alpha);
+
+                    score = score2;
+                    report = report2;
+                }
+            } else {
+                // Negamax
+                const { score: score3, report: report3 } = this.minimax(engineState, depth - 1, -beta, -alpha);
+
+                score = score3;
+                report = report3;
+            }
+
             score = -score;
 
             if (isNaN(score) || score == Infinity) console.log('SCORE IS INVALID', score);
@@ -396,10 +421,12 @@ export class AI {
                 score += dir * pieceVal;
                 report += '\nmaterial: ' + dir * pieceVal;
 
-                // // PST bonus
-                // const pstValue = isWhite ? pst[r][c] : pst[rows - 1 - r][c];
-                // score += pstValue;
-                // report += '\npst bonus: ' + pstValue;
+                // PST bonus
+                if (this.engine.isNormal) {
+                    const pstValue = isWhite ? pst[r][c] : pst[rows - 1 - r][c];
+                    score += pstValue;
+                    report += '\npst bonus: ' + pstValue;
+                }
 
                 // // Safety
                 // if (typeChar !== 'K' && typeChar !== 'P') {

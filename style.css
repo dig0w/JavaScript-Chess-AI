@@ -479,8 +479,9 @@ ul {
     }
     .game-container .main {
         padding: 0;
+        margin: 1rem 0;
 
-        width: 80%;
+        width: 95%;
     }
     .game-container .main > * {
         margin: 0 auto;
@@ -489,11 +490,14 @@ ul {
         width: 100%;
         height: auto;
     }
+    .game-container .main .opponent {
+        align-items: flex-end;
+    }
 
     .game-container .sidebar {
         padding: 0;
 
-        width: 80%
+        width: 90%
     }
     .game-container .sidebar .log {
         flex: none;
@@ -509,9 +513,5 @@ ul {
 
         overflow-y: hidden;
         overflow-x: auto;
-    }
-
-    .back {
-        display: none;
     }
 }
