@@ -97,7 +97,7 @@ export class AI {
         this.nodes = 0;
 
         const best = this.bestMove();
-            if (!best) return; // no legal moves
+            if (!best) return;
 
         this.totalNodes += this.nodes;
 
@@ -198,22 +198,6 @@ export class AI {
         let best = -Infinity;
         let bestMove = null;
         let bestRp = '';
-
-        // // Null-Move Prunning
-        // if (depth >= 3 && !isChecked /* && engineState.nonPawnMaterial() > 200 */) {
-        //     const R = 2 + Math.floor(depth / 4);
-
-        //     this.makeNullMove(engineState);
-
-        //     let { score, report } = this.minimax(engineState, depth - R, -beta, -beta + 1);
-        //     score = -score;
-
-        //     this.undoNullMove(engineState);
-
-        //     if (score >= beta) {
-        //         return { score: beta, report: bestRp };
-        //     }
-        // }
 
         let moveIndex = 0;
 
@@ -570,15 +554,5 @@ export class AI {
         if (isNaN(score) || score == Infinity) console.log('SCORE IS INVALID', score);
 
         return { score: score * side, report };
-    }
-
-    makeNullMove(engineState) {
-        engineState.zobrist.xorTurn();
-        if (engineState.gameCondition == 'PLAYING') engineState.SwitchTurn();
-    }
-
-    undoNullMove(engineState) {
-        engineState.zobrist.xorTurn();
-        engineState.SwitchTurn();
     }
 }
