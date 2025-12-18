@@ -73,8 +73,6 @@ export class ChessRender {
                 else if (row == this.engine.rows - 1 && col == 0) sq.classList.add('bot-left');
                 else if (row == this.engine.rows - 1 && col == this.engine.cols - 1) sq.classList.add('bot-right');
 
-                // sq.onmousedown = (e) => this.onSquareClick(e);
-
                 this.boardEl.appendChild(sq);
 
                 this.UpdateSquare(row, col);
@@ -360,7 +358,7 @@ export class ChessRender {
 
         // Compute vertical offset
         const isBlack = tr !== 0;
-        const y = isBlack ? (tr - 3) * 25 : tr * 25;  // since you're dividing by 4
+        const y = isBlack ? (tr - 3) * 25 : tr * 25;
 
         // Apply transform
         this.promotionScreen.style.transform = `translate(${tc * 100}%, ${y}%)`;
