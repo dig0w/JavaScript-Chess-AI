@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AI vs AI | Mini Chess</title>
 
-    <link rel="stylesheet" href="./style.css">
+    <link rel="stylesheet" href="../style.css">
 </head>
 
 <body>
@@ -27,8 +27,8 @@
                 </div>
             </div>
             <div id="board" class="board">
-                <section id="promotion-screen" class="popup-promotion hidden"></section>
-                <div id="drag-piece" class="drag-piece hidden"></div>
+                <section id="promotion-screen" class="popup-promotion hidden">
+                </section>
             </div>
             <div id="whiteOpponent" class="opponent">
                 <h1>White</h1>
@@ -62,9 +62,6 @@
 
     <section id="end-screen" class="popup-card hidden">
         <div class="card">
-            <div class="back">
-                <button onclick="this.parentNode.parentNode.parentNode.classList.add('hidden')">x</button>
-            </div>
             <header>
                 <h1>White Won!</h1>
                 <p>by checkmate</p>
@@ -86,8 +83,9 @@
     const chess = new ChessEngine();
     const render = new ChessRender(chess);
 
-    const AIW = new AI(chess, true);
-    const AIB = new AI(chess, false);
+    const depth = 10;
+    const AI8W = new AI(chess, true, depth);
+    const AI8B = new AI(chess, false, depth);
 
     window.onload = async (e) => {
         render.BeginPlay();

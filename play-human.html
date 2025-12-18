@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Play vs Human | Mini Chess</title>
 
-    <link rel="stylesheet" href="./style.css">
+    <link rel="stylesheet" href="../../style.css">
 </head>
 
 <body>
@@ -27,8 +27,8 @@
                 </div>
             </div>
             <div id="board" class="board">
-                <section id="promotion-screen" class="popup-promotion hidden"></section>
-                <div id="drag-piece" class="drag-piece hidden"></div>
+                <section id="promotion-screen" class="popup-promotion hidden">
+                </section>
             </div>
             <div id="whiteOpponent" class="opponent">
                 <h1>White</h1>
@@ -63,9 +63,6 @@
 
     <section id="end-screen" class="popup-card hidden">
         <div class="card">
-            <div class="back">
-                <button onclick="this.parentNode.parentNode.parentNode.classList.add('hidden')">x</button>
-            </div>
             <header>
                 <h1>White Won!</h1>
                 <p>by checkmate</p>
@@ -94,6 +91,42 @@
 
             chess.undoMove();
         });
+
+        let epoch = 10000;
+        let summedTest1 = 0;
+        let summedTest2 = 0;
+
+        const move = {
+            "fr": 6,
+            "fc": 0,
+            "tr": 5,
+            "tc": 0,
+            "promote": null
+        };
+
+        const copy = chess.clone();
+
+        for (let i = 0; i < epoch; i++) {
+            const startTime1 = performance.now();
+
+            copy.MovePiece(move.fr, move.fc, move.tr, move.tc, move.promote);
+
+            summedTest1 += performance.now() - startTime1;
+
+            const startTime2 = performance.now();
+
+            copy.undoMove();
+
+            summedTest2 += performance.now() - startTime2;
+        }
+
+        const finalTest1 = summedTest1 / epoch;
+        const finalTest2 = summedTest2 / epoch;
+
+        console.log('Runned tests', epoch, 'times');
+        console.log('Avg Move and undoMove time:', finalTest1 + finalTest2);
+        console.log('Avg Move time:', finalTest1);
+        console.log('Avg undoMove time:', finalTest2);
     };
 </script>
 

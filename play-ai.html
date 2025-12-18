@@ -6,7 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Play vs AI | Mini Chess</title>
 
-    <link rel="stylesheet" href="./style.css">
+    <link rel="stylesheet" href="../style.css">
 </head>
 
 <body>
@@ -27,8 +27,8 @@
                 </div>
             </div>
             <div id="board" class="board">
-                <section id="promotion-screen" class="popup-promotion hidden"></section>
-                <div id="drag-piece" class="drag-piece hidden"></div>
+                <section id="promotion-screen" class="popup-promotion hidden">
+                </section>
             </div>
             <div id="whiteOpponent" class="opponent">
                 <h1>White</h1>
@@ -64,9 +64,6 @@
 
     <section id="end-screen" class="popup-card hidden">
         <div class="card">
-            <div class="back">
-                <button onclick="this.parentNode.parentNode.parentNode.classList.add('hidden')">x</button>
-            </div>
             <header>
                 <h1>White Won!</h1>
                 <p>by checkmate</p>
@@ -89,19 +86,19 @@
     const render = new ChessRender(chess);
 
     let white = true;
-    let AIp = null;
-
+    const depth = 10;
+    
     const params = new URLSearchParams(window.location.search);
     if (params.get('play') === 'black') {
         document.getElementById('switchside-btn').textContent = 'Play White';
 
         white = false;
-        AIp = new AI(chess, true);
+        new AI(chess, true, depth);
     } else {
         document.getElementById('switchside-btn').textContent = 'Play Black';
 
         white = true;
-        AIp = new AI(chess, false);
+        new AI(chess, false, depth);
     }
 
     window.onload = async (e) => {

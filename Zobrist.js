@@ -1,18 +1,18 @@
 export class Zobrist {
-    constructor(rows = 8, cols = 8) {
-        this.rows = rows;
-        this.cols = cols;
+    constructor() {
+        this.rows = 8;
+        this.cols = 8;
 
         this.piece = {};    // piece[pieceType][square]
         this.castle = new Array(16);
-        this.ep = new Array(cols).fill(0);
+        this.ep = new Array(8).fill(0);
         this.turn = this.rand();
 
         const pieces = ['P','N','B','R','Q','K','p','n','b','r','q','k'];
 
         for (const p of pieces) {
-            this.piece[p] = new Array(rows*cols);
-            for (let i = 0; i < rows*cols; i++) {
+            this.piece[p] = new Array(64);
+            for (let i = 0; i < 64; i++) {
                 this.piece[p][i] = this.rand();
             }
         }
@@ -40,9 +40,9 @@ export class Zobrist {
     // Castling rights
     xorCastleRights(castlingRights) {
         let mask = 0;
-        if (castlingRights.whiteKingSide)  mask |= 1 << 0;
-        if (castlingRights.whiteQueenSide) mask |= 1 << 1;
-        if (castlingRights.blackKingSide)  mask |= 1 << 2;
+        if (castlingRights.whiteKingSide)  mask |= 1 << 0; // bit 0
+        if (castlingRights.whiteQueenSide) mask |= 1 << 1; // bit 1
+        if (castlingRights.blackKingSide)  mask |= 1 << 2; // bit 2
         if (castlingRights.blackQueenSide) mask |= 1 << 3;
 
         this.hash ^= this.castle[mask & 0xF];
@@ -50,7 +50,7 @@ export class Zobrist {
 
     // En-passant square file
     xorEP(file) {
-        if (file >= 0 && file < this.cols) this.hash ^= this.ep[file];
+        if (file >= 0 && file < 8) this.hash ^= this.ep[file];
     }
 
     // Turn to move
@@ -59,7 +59,7 @@ export class Zobrist {
     }
 
     clone() {
-        const copy = new Zobrist(this.rows, this.cols);
+        const copy = new Zobrist();
 
         for (const key of Object.keys(this.piece)) {
             copy.piece[key] = this.piece[key].slice();
