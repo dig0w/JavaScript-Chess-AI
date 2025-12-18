@@ -99,8 +99,6 @@ export class ChessRender {
             pmSq.dataset.piece = promoPiece;
 
             this.promotionScreen.appendChild(pmSq);
-
-            // <button data-piece="q" class="square promotion queen"></button>
         }
 
         document.addEventListener('mousedown', (e) => this.onMouseDown(e));
