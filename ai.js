@@ -123,23 +123,19 @@ export class AI {
 
         let bestScore = -Infinity;
         let bestMove = null;
-        let bestRp;
 
         for (const move of moves) {
             const moved = copy.MovePiece(move.fr, move.fc, move.tr, move.tc, move.promote);
             if (!moved) continue;
 
-            let { score, report } = this.minimax(copy, depth - 1, -Infinity, Infinity, '', '');
+            let score = this.minimax(copy, depth - 1, -Infinity, Infinity, '', '');
             score = -score;
 
             copy.undoMove();
 
-            console.log(move, score);
-
             if (score > bestScore) {
                 bestScore = score;
                 bestMove = move;
-                bestRp = report;
             }
         }
 
@@ -148,11 +144,12 @@ export class AI {
             return null;
         }
 
-        console.log('Best move:', bestMove, bestScore, bestRp, moves.length);
+        console.log('Best move:', bestMove, bestScore);
+
         return bestMove;
     }
 
-    minimax(engineState, depth, alpha, beta, alphaRp, betaRp) {
+    minimax(engineState, depth, alpha, beta) {
         this.nodes++;
 
         // Check TT
@@ -162,16 +159,16 @@ export class AI {
             const entry = this.TT.get(key);
 
             if (entry.depth >= depth) {
-                if (entry.flag === 'EXACT') return { score: entry.value, report: 'TT' };
+                if (entry.flag === 'EXACT') return entry.value;
                 if (entry.flag === 'LOWERBOUND') alpha = Math.max(alpha, entry.value);
                 if (entry.flag === 'UPPERBOUND') beta = Math.min(beta, entry.value);
-                if (alpha >= beta) return { score: entry.value, report: 'TT' };
+                if (alpha >= beta) return entry.value;
             }
         }
 
         // Terminal condition
         if (depth === 0 || engineState.gameCondition !== 'PLAYING') {
-            return this.quiescence(engineState, alpha, beta, 0, alphaRp, betaRp);
+            return this.quiescence(engineState, alpha, beta, 0);
         }
 
         const isChecked = engineState.isKingInCheck(engineState.turn === 0);
@@ -190,14 +187,13 @@ export class AI {
         }
 
         let moves = engineState.getPlayerLegalMoves(engineState.turn === 0);
-            if (moves.length === 0) return this.quiescence(engineState, alpha, beta, 0, alphaRp, betaRp);
+            if (moves.length === 0) return this.quiescence(engineState, alpha, beta, 0);
 
         // Order moves
         moves.sort((a, b) => this.scoreMove(engineState, b, depth) - this.scoreMove(engineState, a, depth));
 
         let best = -Infinity;
         let bestMove = null;
-        let bestRp = '';
 
         let moveIndex = 0;
 
@@ -215,28 +211,19 @@ export class AI {
             if (!moved) continue;
 
             let score;
-            let report;
 
             // Late Move Reduction
             if (depth >= 3 && moveIndex >= 4 && !isCapture && !isPromotion) {
                 // Reduced search
-                const { score: score1, report: report1 } = this.minimax(engineState, depth - 2, -alpha - 1, -alpha);
-                score = score1;
-                report = report1;
+                score = this.minimax(engineState, depth - 2, -alpha - 1, -alpha);
 
                 // Re-search if it improved alpha
                 if (score > alpha) {
-                    const { score: score2, report: report2 } = this.minimax(engineState, depth - 1, -beta, -alpha);
-
-                    score = score2;
-                    report = report2;
+                    score = this.minimax(engineState, depth - 1, -beta, -alpha);
                 }
             } else {
                 // Negamax
-                const { score: score3, report: report3 } = this.minimax(engineState, depth - 1, -beta, -alpha);
-
-                score = score3;
-                report = report3;
+                score = this.minimax(engineState, depth - 1, -beta, -alpha);
             }
 
             score = -score;
@@ -248,11 +235,9 @@ export class AI {
             if (score > best) {
                 best = score;
                 bestMove = move;
-                bestRp = report;
             }
             if (score > alpha) {
                 alpha = score;
-                alphaRp = report;
             }
 
             if (alpha >= beta) {
@@ -285,9 +270,9 @@ export class AI {
         else if (best >= beta) flag = 'LOWERBOUND';
         this.TT.set(key, { value: best, depth, flag, bestMove });
 
-        if (best == -Infinity) return this.quiescence(engineState, alpha, beta, 0, alphaRp, betaRp);
+        if (best == -Infinity) return this.quiescence(engineState, alpha, beta, 0);
 
-        return { score: best, report: bestRp };
+        return best;
     }
 
     scoreMove(engineState, move, depthKey = -1) {
@@ -330,15 +315,14 @@ export class AI {
         return score;
     }
 
-    quiescence(engineState, alpha, beta, qDepth = 0, alphaRp, betaRp) {
+    quiescence(engineState, alpha, beta, qDepth = 0) {
         this.nodes++;
         if (qDepth > 3 || engineState.gameCondition !== 'PLAYING') return this.evaluate(engineState);
 
-        const { score: standPat, report: standPatRp } = this.evaluate(engineState);
-        if (standPat >= beta) return { score: beta, report: betaRp };
+        const standPat = this.evaluate(engineState);
+        if (standPat >= beta) return beta;
         if (alpha < standPat) {
             alpha = standPat;
-            alphaRp = standPatRp;
         }
 
         // Only captures or promotions
@@ -355,7 +339,7 @@ export class AI {
                 const victimValue = this.pieceValues[target.toUpperCase()] || 0;
                 const deltaMargin = 100; // small safety buffer
 
-                // If even the best-case gain can't reach alpha → prune
+                // If even the best-case gain can't reach alpha -> prune
                 if (standPat + victimValue + deltaMargin < alpha) {
                     continue;
                 }
@@ -364,39 +348,35 @@ export class AI {
             const moved = engineState.MovePiece(move.fr, move.fc, move.tr, move.tc, move.promote);
             if (!moved) continue;
 
-            let { score, report } = this.quiescence(engineState, -beta, -alpha, qDepth + 1, betaRp, alphaRp);
+            let score = this.quiescence(engineState, -beta, -alpha, qDepth + 1);
             score = -score;
 
             if (isNaN(score) || score == Infinity) console.log('SCORE IS INVALID', score);
 
             engineState.undoMove();
 
-            if (score >= beta) return { score: beta, report: betaRp };
+            if (score >= beta) return beta;
             if (score > alpha) {
                 alpha = score;
-                alphaRp = report;
             }
         }
 
-        return { score: alpha, report: alphaRp };
+        return alpha;
     }
 
     evaluate(engineState) {
         const side = engineState.turn === 0 ? 1 : -1;
 
         // End Condition
-        if (engineState.gameCondition.startsWith('WHITE_WIN')) return { score: (1000000 - (engineState.totalPlies * 2)) * -side, report: 'WHITE_WIN' };
-        if (engineState.gameCondition.startsWith('BLACK_WIN')) return { score: (-1000000 + (engineState.totalPlies * 2)) * -side, report: 'BLACK_WIN' };
-        if (engineState.gameCondition.startsWith('DRAW')) return { score: -500 * -side, report: 'DRAW' };
+        if (engineState.gameCondition.startsWith('WHITE_WIN')) return (1000000 - (engineState.totalPlies * 2)) * -side;
+        if (engineState.gameCondition.startsWith('BLACK_WIN')) return (-1000000 + (engineState.totalPlies * 2)) * -side;
+        if (engineState.gameCondition.startsWith('DRAW')) return -500 * -side;
 
         let score = 0;
-        let report = '';
 
         const rows = engineState.rows;
         const cols = engineState.cols;
         const pieces = engineState.pieces;
-
-        const board = Array.from({ length: rows }, () => Array.from({ length: cols }, () => '.'));
 
         const whitePawns = pieces['P'].clone();
         const blackPawns = pieces['p'].clone();
@@ -414,51 +394,15 @@ export class AI {
             let sq = bb.bitIndex();
             while (sq >= 0) {
                 const { r, c } = engineState.fromSq(sq);
-                board[r][c] = piece;
-
-                report += '\n\nsquare: r: ' + r + ' c: ' + c + ' piece: ' + piece;
 
                 // Material
                 score += dir * pieceVal;
-                report += '\nmaterial: ' + dir * pieceVal;
 
                 // PST bonus
                 if (this.engine.isNormal) {
                     const pstValue = isWhite ? pst[r][c] : pst[rows - 1 - r][c];
                     score += pstValue;
-                    report += '\npst bonus: ' + pstValue;
                 }
-
-                // // Safety
-                // if (typeChar !== 'K' && typeChar !== 'P') {
-                //     const attackers = engineState.getSquareAttacks(r, c, !isWhite);
-                //     const defenders = engineState.getSquareAttacks(r, c, isWhite);
-
-                //     let Avalue = 0;
-                //     let Dvalue = 0;
-
-                //     const sumPieceValues = (bb) => {
-                //         let total = 0;
-                //         for (const [p, pBB] of Object.entries(pieces)) {
-                //             const typeChar = p.toUpperCase();
-
-                //             const val = typeChar === 'K' ? 0 : (this.pieceValues[typeChar] || 0);
-
-                //             const masked = bb.and ? bb.and(pBB) : bb.and(bb, pBB);
-                //             total += masked.popcount() * val;
-                //         }
-                //         return total;
-                //     }
-
-                //     Avalue = sumPieceValues(attackers);
-                //     Dvalue = sumPieceValues(defenders);
-
-                //     const safetyValue = Dvalue - Avalue;
-                //     if (safetyValue !== 0) {
-                //         score += -dir * safetyValue * .5;
-                //         report += '\nsafety: ' + -dir * safetyValue * .5;
-                //     }
-                // }
 
                 const pawnsOnFile = pawnsBB.and(ChessEngine.fileMasks[c]).popcount();
                 const ownPawnsOnFile = isWhite ?
@@ -471,13 +415,11 @@ export class AI {
                         // Promotion proximity
                         const progress = isWhite ? (rows - 1 - r) / (rows - 1) : r / (rows - 1);
                         score += dir * Math.pow(progress, 5) * this.pieceValues['Q'];
-                        report += '\npromotion: ' + dir * Math.pow(progress, 5) * this.pieceValues['Q'];
 
                         // Doubled pawns
                         if (ownPawnsOnFile > 1) {
                             const penalty = (ownPawnsOnFile - 1) * 5;
                             score += -dir * penalty;
-                            report += '\ndoubled: ' + -dir * penalty;
                         }
                         break;
                     case 'N':
@@ -487,17 +429,14 @@ export class AI {
                         const distance = Math.sqrt(dr * dr + dc * dc);
 
                         score += dir * -distance * 5;
-                        report += '\nknight to middle: ' + dir * -distance * 5;
                         break;
                     case 'B':
                         break;
                     case 'R':
                         if (pawnsOnFile === 0) { // Open file bonus
                             score += dir * 20;
-                            report += '\nopen rook: ' + dir * 20 + ' | ' + pawnsOnFile;
                         } else if (ownPawnsOnFile === 0) { // Semi-open file bonus
                             score += dir * 10;
-                            report += '\nsemi open rook: ' + dir * 10 + ' | ' + ownPawnsOnFile;
                         }
                         break;
                     case 'Q':
@@ -505,10 +444,8 @@ export class AI {
                     case 'K':
                         if (pawnsOnFile === 0) { // Open file bonus
                             score += -dir * 35;
-                            report += '\nopen king: ' + -dir * 35 + ' | ' + pawnsOnFile;
                         } else if (ownPawnsOnFile === 0) { // Semi-open file bonus
                             score += -dir * 20;
-                            report += '\nsemi open king: ' + -dir * 20 + ' | ' + ownPawnsOnFile;
                         }
                         break;
                 }
@@ -523,36 +460,17 @@ export class AI {
         score += engineState.castlingRights.whiteQueenSide ? 5 : -5;
         score += engineState.castlingRights.blackKingSide ? -5 : 5;
         score += engineState.castlingRights.blackQueenSide ? -5 : 5;
-        report += '\n\nwhite King: ' + (engineState.castlingRights.whiteKingSide ? 5 : -5);
-        report += '\nwhite Queen: ' + (engineState.castlingRights.whiteQueenSide ? 5 : -5);
-        report += '\nblack King: ' + (engineState.castlingRights.blackKingSide ? -5 : 5);
-        report += '\nblack Queen: ' + (engineState.castlingRights.blackQueenSide ? -5 : 5);
 
         // Mobility
         const whiteMoves = engineState.getPlayerLegalMoves(true);
         const blackMoves = engineState.getPlayerLegalMoves(false);
         score += (whiteMoves.length - blackMoves.length) * 10;
-        report += '\n\nmobility: ' + (whiteMoves.length - blackMoves.length) * 10;
 
         // Discourage long games
         score -= engineState.totalPlies * 2;
-        report += '\nlong games: ' + -(engineState.totalPlies * 2);
-
-        report += '\n\nfinal: ' + score * side;
-        report += '\n\nboard: ';
-        for (let index = 0; index < board.length; index++) {
-            report += '\n' + board[index].toString();
-        }
-
-        report += '\n\nmoves: ';
-        for (let index = 0; index < engineState.logs.length; index++) {
-            const log = engineState.logs[index];
-
-            report += '\n' + log.originalPiece + ' from ' + log.fr + ' ' + log.fc + ' to ' + log.tr + ' ' + log.tc + ' turn: ' + log.turn;
-        }
 
         if (isNaN(score) || score == Infinity) console.log('SCORE IS INVALID', score);
 
-        return { score: score * side, report };
+        return score * side;
     }
 }

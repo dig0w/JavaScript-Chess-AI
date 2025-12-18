@@ -23,8 +23,6 @@ Both Pruning (d=4 b)        e4          60273 (3687ms)      31826 (2483ms)      
 PST (d=4 b)                 e4          31826 (2483ms)      31034 (2464ms)      e5           102.6%
 
 Late Move Reductions(d=4 b) e4          31034 (2464ms)      15106 (1379ms)      g6           205.4%
-Null-Move Pruning (d=4 b)   e4          15106 (1379ms)      ... (...ms)         ..           ...%
-
 
 AIs                                                     End         Nodes   Moves
 My ai (09/12 10:00 d=2) vs Stockfish (listudy.org)      Black Won   21495   28
