@@ -1,8 +1,13 @@
-import { delay } from './utils.js';
-import { ChessEngine } from './chessEngine.js';
+import { delay } from '../utils.js';
+import { ChessEngine } from '../faster/chessEngine.js';
 
+<<<<<<< Updated upstream:ai.js
 export class AI {
     constructor(engine = null, playsWhite = false, depth = 4) {
+=======
+export class AIV8 {
+    constructor(engine, playsWhite = false, depth = 2) {
+>>>>>>> Stashed changes:AI/ai_v8.js
         this.engine = engine;
         this.playsWhite = playsWhite;
 

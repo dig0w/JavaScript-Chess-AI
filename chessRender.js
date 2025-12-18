@@ -1,4 +1,4 @@
-import { delay } from './utils.js';
+import { delay } from '../utils.js';
 
 export class ChessRender {
     constructor(engine = null) {
@@ -8,13 +8,15 @@ export class ChessRender {
         this.boardEl = null;
         this.turnDisplay = null;
         this.logDisplay = null;
-
+        this.whiteCaptures = null;
+        this.blackCaptures = null;
         this.promotionScreen = null;
         this.endScreen = null;
 
         this.lastSelected = null;
         this.lastPromote = null;
 
+<<<<<<< Updated upstream
         this.dragging = false;
         this.dragEl = null;
 
@@ -28,6 +30,9 @@ export class ChessRender {
         this.blackKingChecked = false;
 
         this.assetPrefix = './assets/chess.com_';
+=======
+        this.assetPrefix = '../assets/chess.com_';
+>>>>>>> Stashed changes
         this.sounds = [
             this.assetPrefix + 'move-self' + '.webm',
             this.assetPrefix + 'capture' + '.webm',
@@ -42,8 +47,8 @@ export class ChessRender {
         this.boardEl = document.getElementById('board');
         this.turnDisplay = document.getElementById('turn-display');
         this.logDisplay = document.getElementById('log-display');
-        this.whiteCapturesEl = document.getElementById('whiteOpponent').children[1];
-        this.blackCapturesEl = document.getElementById('blackOpponent').children[1];
+        this.whiteCaptures = document.getElementById('whiteOpponent').children[1];
+        this.blackCaptures = document.getElementById('blackOpponent').children[1];
         this.promotionScreen = document.getElementById('promotion-screen');
         this.dragEl = document.getElementById('drag-piece');
         this.endScreen = document.getElementById('end-screen');
@@ -51,20 +56,25 @@ export class ChessRender {
         this.boardEl.style.gridTemplateRows = `repeat(${this.engine.rows}, minmax(0, 1fr))`;
         this.boardEl.style.gridTemplateColumns = `repeat(${this.engine.cols}, minmax(0, 1fr))`;
 
+<<<<<<< Updated upstream
         this.dragEl.style.height = (100 / this.engine.rows) + '%';
         this.dragEl.style.width = 100 / this.engine.cols + '%';
 
         for (let row = 0; row < this.engine.rows; row++) {
             for (let col = 0; col < this.engine.cols; col++) {
+=======
+        for (let r = 0; r < this.engine.rows; r++) {
+            for (let c = 0; c < this.engine.cols; c++) {
+>>>>>>> Stashed changes
                 const sq = document.createElement('button');
                 sq.classList.add('square');
-                sq.dataset.rank = this.engine.rows - row;
-                sq.dataset.file = String.fromCharCode(97 + col);
+                sq.dataset.r = r;
+                sq.dataset.c = c;
 
-                sq.dataset.row = row;
-                sq.dataset.col = col;
+                sq.dataset.rank = this.engine.rows - r;
+                sq.dataset.file = String.fromCharCode(97 + c);
 
-                if ((row + col) % 2 === 1) {
+                if ((r + c) % 2 === 1) {
                     sq.classList.add('dark');
                 }
 
@@ -75,7 +85,7 @@ export class ChessRender {
 
                 this.boardEl.appendChild(sq);
 
-                this.UpdateSquare(row, col);
+                this.UpdateSquare(r, c);
             }
         }
 
@@ -104,14 +114,13 @@ export class ChessRender {
         document.addEventListener('mouseup', (e) => this.onMouseUp(e));
     }
 
-
-    UpdateSquare(row, col) {
-        const sq = this.boardEl.querySelector(`.square[data-row="${row}"][data-col="${col}"]`);
+    UpdateSquare(r, c) {
+        const sq = this.boardEl.querySelector(`.square[data-r="${r}"][data-c="${c}"]`);
             if (!sq) return;
-
-        const piece = this.engine.getPiece(row, col);
-
-        if (piece == '.') {
+        
+        const piece = this.engine.board[r][c];
+        
+        if (this.engine.isEmpty(this.engine.board[r][c])) {
             sq.style.setProperty('--bg-img', ``);
             return;
         }
@@ -119,9 +128,10 @@ export class ChessRender {
         sq.style.setProperty('--bg-img', `url(${this.assetPrefix + (this.engine.isWhite(piece) ? 'w' : 'b') + piece.toLowerCase()}.png)`);
     }
 
-    UpdateGame() {
-        // Turn
-        this.turnDisplay.textContent = this.engine.turn == 0 ? 'White' : 'Black';
+    async UpdateGame() {
+        this.UpdateCheck();
+        this.UpdateCaptures();
+        this.UpdateTurn();
 
         // Highlight last move
         document.querySelectorAll('.selected').forEach(sq => sq.classList.remove('selected'));
@@ -129,21 +139,18 @@ export class ChessRender {
         if (this.engine.logs.length > 0) {
             const lastMove = this.engine.logs[this.engine.logs.length - 1];
 
-            const fsq = this.boardEl.querySelector(`.square[data-row="${lastMove.fr}"][data-col="${lastMove.fc}"]`);
+            const fsq = this.boardEl.querySelector(`.square[data-r="${lastMove.fr}"][data-c="${lastMove.fc}"]`);
                 if (!fsq) return;
-            const tsq = this.boardEl.querySelector(`.square[data-row="${lastMove.tr}"][data-col="${lastMove.tc}"]`);
+            const tsq = this.boardEl.querySelector(`.square[data-r="${lastMove.tr}"][data-c="${lastMove.tc}"]`);
                 if (!tsq) return;
             
             fsq.classList.add('light-selected');
             tsq.classList.add('selected');
         }
 
-        // Captures
-        this.whiteCapturesEl.children[0].innerHTML = '';
-        for (let i = 0; i < this.whiteCaptures.length; i++) {
-            const li = document.createElement('li');
-            li.textContent = this.whiteCaptures[i].toUpperCase();
+        await delay(200);
 
+<<<<<<< Updated upstream
             this.whiteCapturesEl.children[0].appendChild(li);
         }
 
@@ -179,6 +186,8 @@ export class ChessRender {
         }
 
         // End Game
+=======
+>>>>>>> Stashed changes
         if (this.engine.gameCondition.startsWith('WHITE_WINS')) {
             this.endScreen.classList.remove('hidden');
 
@@ -209,6 +218,56 @@ export class ChessRender {
         }
     }
 
+    UpdateCheck() {
+        document.querySelectorAll('.checked').forEach(sq => sq.classList.remove('checked'));
+
+        if (this.engine.whiteKingChecked) {
+            const kingChar = 'K';
+            const kings = this.engine.getPieces(kingChar);
+            const { r: kr, c: kc } = kings[0] ? kings[0] : { r: -1, c: -1 };
+
+            const sq = document.querySelector(`.square[data-r="${kr}"][data-c="${kc}"]`);
+            if (sq) sq.classList.add('checked');
+        }
+        if (this.engine.blackKingChecked) {
+            const kingChar = 'k';
+            const kings = this.engine.getPieces(kingChar);
+            const { r: kr, c: kc } = kings[0] ? kings[0] : { r: -1, c: -1 };
+
+            const sq = document.querySelector(`.square[data-r="${kr}"][data-c="${kc}"]`);
+            if (sq) sq.classList.add('checked');
+        }
+    }
+
+    UpdateCaptures() {
+        this.whiteCaptures.children[0].innerHTML = '';
+        for (let i = 0; i < this.engine.whiteCaptures.length; i++) {
+            const li = document.createElement('li');
+            li.textContent = this.engine.whiteCaptures[i].toUpperCase();
+
+            this.whiteCaptures.children[0].appendChild(li);
+        }
+
+        const whiteDiff = this.engine.whitePoints - this.engine.blackPoints;
+        this.whiteCaptures.children[1].textContent = whiteDiff === 0 ? '' : (whiteDiff > 0 ? `+${whiteDiff}` : `${whiteDiff}`);
+
+
+        this.blackCaptures.children[0].innerHTML = '';
+        for (let i = 0; i < this.engine.blackCaptures.length; i++) {
+            const li = document.createElement('li');
+            li.textContent = this.engine.blackCaptures[i].toUpperCase();
+
+            this.blackCaptures.children[0].appendChild(li);
+        }
+
+        const blackDiff = -whiteDiff;
+        this.blackCaptures.children[1].textContent = blackDiff === 0 ? '' : (blackDiff > 0 ? `+${blackDiff}` : `${blackDiff}`);
+    }
+
+    UpdateTurn() {
+        this.turnDisplay.textContent = this.engine.turn == 0 ? 'White' : 'Black';
+    }
+
     AddToLog() {
         const notaion = this.engine.getMoveNotation(this.engine.logs[this.engine.logs.length - 1]);
             if (notaion == '' || !notaion) return;
@@ -220,16 +279,22 @@ export class ChessRender {
 
         this.logDisplay.scrollTop = this.logDisplay.scrollHeight;
     }
-
     RemoveFromLog() {
         this.logDisplay.children[this.logDisplay.children.length - 1].remove();
     }
 
+<<<<<<< Updated upstream
 
     onMouseDown(e) {
         let selected = false;
         if (e.target.classList.contains('square')) selected = this.onSquareClick(e);
         if (!e.target.classList.contains('square') || !selected) {
+=======
+    onSquareClick(e) {
+        // Case 0: not his turn -> deselect
+        if ((this.engine.turn == 0 && this.engine.whiteAI != null) || (this.engine.turn == 1 && this.engine.blackAI != null)) {
+            console.log('AIs turn');
+>>>>>>> Stashed changes
             this.lastSelected = null;
             this.desHighlightMoves();
         }
@@ -286,26 +351,26 @@ export class ChessRender {
             return false;
         }
 
-        const row = +e.target.dataset.row;
-        const col = +e.target.dataset.col;
+        const r = +e.target.dataset.r;
+        const c = +e.target.dataset.c;
 
         const clickedSame =
             this.lastSelected &&
-            this.lastSelected.row === row &&
-            this.lastSelected.col === col;
+            this.lastSelected.r === r &&
+            this.lastSelected.c === c;
 
         // Case 2: clicking same square -> ignore
         if (clickedSame) return true;
 
         // Case 3: has previous target and a valid new target -> move piece
-        if (this.lastSelected != null && e.target.classList.contains('highlight')) {
-            console.log('Move from', this.lastSelected?.row, this.lastSelected?.col, 'to', row, col);
-            this.engine.MovePiece(this.lastSelected?.row, this.lastSelected?.col, row, col);
+        if (this.lastSelected != null && this.engine.isLegalMove(this.lastSelected?.r, this.lastSelected?.c, r, c)) {
+            console.log('Move from', this.lastSelected?.r, this.lastSelected?.c, 'to', r, c);
+            this.engine.MovePiece(this.lastSelected?.r, this.lastSelected?.c, r, c);
 
             return false;
         }
 
-        const piece = this.engine.getPiece(row, col);
+        const piece = this.engine.board[r][c];
 
         // Case 4: click on empty square -> clear selection
         if (this.engine.isEmpty(piece)) {
@@ -322,25 +387,25 @@ export class ChessRender {
         }
 
         // Case 6: click on a piece -> select        
-        this.lastSelected = { row, col };
+        this.lastSelected = { r, c };
 
+<<<<<<< Updated upstream
         this.highlightMoves(row, col);
+=======
+        this.highlightMoves(r, c);
+    }
+>>>>>>> Stashed changes
 
         return true;
     }
 
-    highlightMoves(row, col) {
+    highlightMoves(r, c) {
         this.desHighlightMoves();
 
-        const startTime = performance.now();
+        const moves = this.engine.getLegalMoves(r, c);
 
-        const moves = this.engine.getLegalMoves(row, col);
-
-        const finalTime = performance.now() - startTime;
-        console.log('getLegalMoves:', finalTime);
-
-        moves.forEach(([row, col, promote]) => {
-            const sq = document.querySelector(`.square[data-row="${row}"][data-col="${col}"]`);
+        moves.forEach(([r, c]) => {
+            const sq = document.querySelector(`.square[data-r="${r}"][data-c="${c}"]`);
             if (sq) sq.classList.add('highlight');
         });
     }
@@ -349,7 +414,21 @@ export class ChessRender {
         document.querySelectorAll('.highlight').forEach(sq => sq.classList.remove('highlight'));
     }
 
+    onPromoClick(e) {
+        const newPiece = e.target.dataset.piece;
+            if (!newPiece) return;
 
+        const { fr, fc, tr, tc } = this.lastPromote;
+
+        this.engine.MovePiece(fr, fc, tr, tc, newPiece);
+
+        this.lastPromote = null;
+        this.promotionScreen.classList.add('hidden');
+        e.target.blur();
+    }
+    onPromoBlur(e) {
+        this.blurredTime = new Date();
+    }
     async Promote(fr, fc, tr, tc) {
         this.promotionScreen.classList.remove('black');
         await delay(100);
@@ -374,6 +453,8 @@ export class ChessRender {
             promoBtn.style.setProperty('--bg-img', `url(${this.assetPrefix + (isBlack ? 'b' : 'w') + promoPiece.toLowerCase()}.png)`);
         }
 
+        if (isBlack) this.promotionScreen.classList.add('black');
+
         this.promotionScreen.classList.remove('hidden');
 
         // Focus first selectable piece
@@ -381,6 +462,7 @@ export class ChessRender {
         if (first) first.focus();
     }
 
+<<<<<<< Updated upstream
     onPromoClick(e) {
         const newPiece = e.target.dataset.piece;
             if (!newPiece) return;
@@ -395,6 +477,8 @@ export class ChessRender {
     }
 
 
+=======
+>>>>>>> Stashed changes
     PlaySound(type = 0) {
         this.playableSounds[type].play();
     }
