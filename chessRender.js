@@ -374,6 +374,8 @@ export class ChessRender {
             promoBtn.style.setProperty('--bg-img', `url(${this.assetPrefix + (isBlack ? 'b' : 'w') + promoPiece.toLowerCase()}.png)`);
         }
 
+        if (isBlack) this.promotionScreen.classList.add('black');
+
         this.promotionScreen.classList.remove('hidden');
 
         // Focus first selectable piece
