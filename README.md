@@ -1,4 +1,4 @@
-<!-- Main -->
+<!-- MAIN -->
 <br />
 <div align="center">
   <h2 align="center">JavaScript Chess AI</h2>
@@ -10,7 +10,7 @@
   You can test it yourself [right here](https://dig0w.github.io/JavaScript-Chess-AI/main.html).
 </div>
 
-<!-- Index -->
+<!-- INDEX -->
 <details>
   <summary>Index</summary>
   <ol>
@@ -61,6 +61,7 @@ This new version, stage three, is now capable of doing evaluating roughly 11k no
 - [ ] Static Exchange Evaluation
 - [ ] Razoring
 - [ ] Iterative Deepening
+- [ ] UCI
 
 <p align="right">(<a href="#JavaScript-Chess-AI">back to top</a>)</p>
 
