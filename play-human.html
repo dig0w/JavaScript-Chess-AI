@@ -94,6 +94,41 @@
 
             chess.undoMove();
         });
+
+        let epoch = 10000;
+        let summedTest1 = 0;
+        let summedTest2 = 0;
+
+        const move = {
+            "fr": 6,
+            "fc": 0,
+            "tr": 5,
+            "tc": 0,
+            "promote": null
+        };
+
+        const copy = chess.clone();
+
+        for (let i = 0; i < epoch; i++) {
+            const startTime1 = performance.now();
+
+            copy.getPlayerLegalMoves(true);
+
+            summedTest1 += performance.now() - startTime1;
+
+            const startTime2 = performance.now();
+
+            copy.getPlayerLegalMoves(false);
+
+            summedTest2 += performance.now() - startTime2;
+        }
+
+        const finalTest1 = summedTest1 / epoch;
+        const finalTest2 = summedTest2 / epoch;
+
+        console.log('Runned tests', epoch, 'times');
+        console.log('Avg getPlayerLegalMoves white time:', finalTest1);
+        console.log('Avg getPlayerLegalMoves false time:', finalTest2);
     };
 </script>
 

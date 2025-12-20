@@ -228,7 +228,7 @@ export class ChessRender {
 
     onMouseDown(e) {
         let selected = false;
-        if (e.target.classList.contains('square')) selected = this.onSquareClick(e);
+        if (e.target.classList.contains('square') && !e.target.classList.contains('promotion')) selected = this.onSquareClick(e);
         if (!e.target.classList.contains('square') || !selected) {
             this.lastSelected = null;
             this.desHighlightMoves();

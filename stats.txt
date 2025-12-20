@@ -1,7 +1,11 @@
 Engines                     10k Moves Avg
-Matrix Engine (1st)         0.04 ms
-Bitboard Engine (2nd)       0.0038 ms
-New Bitboard Enginge (3rd)  0.0034 ms
+Matrix Engine (v1.0)         0.0385 ms
+Bitboard Engine (v1.5)       0.0038 ms
+New Bitboard Enginge (v2.0)  0.0034 ms
+                            10k genMoves Avg
+Matrix Engine (v1.0)         0.238 ms
+Bitboard Engine (v1.5)       0.175 ms
+New Bitboard Enginge (v2.0)  0.081 ms
 
 
 Methods                     Opening     Before              After               Response     Improvement
@@ -24,7 +28,7 @@ PST (d=4 b)                 e4          31826 (2483ms)      31034 (2464ms)      
 
 Late Move Reductions(d=4 b) e4          31034 (2464ms)      15106 (1379ms)      g6           205.4%
 
-AIs                                                     End         Nodes   Moves
+AIs                                                     End         Nodes   Moves   Notes
 My ai (09/12 10:00 d=2) vs Stockfish (listudy.org)      Black Won   21495   28
 
 My ai (09/12 16:20 d=2) vs Stockfish (listudy.org)      Black Won   62317   40
@@ -34,3 +38,12 @@ My ai (09/12 21:00 d=4) vs Stockfish (listudy.org)      Black Won   4578510 72
 My ai (11/12 12:00 d=4) vs Stockfish (listudy.org)      Black Won   1480213 52
 
 My ai (16/12 09:00 d=4) vs Stockfish (listudy.org)      Black Won   1409000 70
+
+My ai (19/12 10:00 d=4) vs Stockfish (listudy.org)      Black Won   1866451 66
+
+My ai (20/12 20:00 t=2s) vs Stockfish (listudy.org)     Black Won   196474  56      With Mobility
+My ai (20/12 20:00 t=2s) vs Stockfish (listudy.org)     Black Won   977518  76      No Mobility
+
+tips:
+
+make move gen return ints not objects.

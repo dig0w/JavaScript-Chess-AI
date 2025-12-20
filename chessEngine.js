@@ -499,6 +499,20 @@ export class ChessEngine {
         return true;
     }
 
+    makeNullMove() {
+        if (this.enPassantSquare !== -1) this.zobrist.xorEP(this.enPassantSquare);
+        this.enPassantSquare = -1;
+
+        this.zobrist.xorTurn();
+        this.SwitchTurn();
+    }
+
+    undoNullMove(prevEp, prevHash) {
+        this.zobrist.hash = prevHash;
+        this.enPassantSquare = prevEp;
+        this.SwitchTurn();
+    }
+
 
     getLegalMoves(fr, fc) {
         const piece = this.getPiece(fr, fc);
@@ -878,6 +892,14 @@ export class ChessEngine {
         }
 
         return false;
+    }
+
+    hasNonPawnMaterial(isWhite) {
+        const occBB = isWhite ? this.occupiedWhite : this.occupiedBlack;
+        const pawnsBB = isWhite ? this.pieces.P : this.pieces.p;
+        const kingBB = isWhite ? this.pieces.K : this.pieces.k;
+
+        return !occBB.and(pawnsBB.not()).and(kingBB.not()).isZero();
     }
 
 

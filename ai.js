@@ -2,14 +2,16 @@ import { delay } from './utils.js';
 import { ChessEngine } from './chessEngine.js';
 
 export class AI {
-    constructor(engine = null, playsWhite = false, depth = 4) {
+    constructor(engine = null, playsWhite = false, timeLimit = 2000) {
         this.engine = engine;
         this.playsWhite = playsWhite;
 
         if (playsWhite) engine.whiteAI = this;
         else engine.blackAI = this;
 
-        this.depth = depth;
+        this.timeLimit = timeLimit;
+
+        this.INFINITY = 1000000;
 
         this.pieceValues = { P: 100, N: 320, B: 330, R: 500, Q: 900, K: 20000 };
 
@@ -82,6 +84,12 @@ export class AI {
 
         this.nodes = 0;
         this.totalNodes = 0;
+
+        this.moves = 0;
+        this.totalMoves = 0;
+
+        this.genMoves = 0;
+        this.totalGenMoves = 0;
     }
 
     async Play() {
@@ -95,75 +103,129 @@ export class AI {
         console.log("AI (" + (this.playsWhite ? "White" : "Black") + ") playing...");
 
         this.nodes = 0;
+        this.moves = 0;
+        this.genMoves = 0;
 
         const best = this.bestMove();
             if (!best) return;
 
         this.totalNodes += this.nodes;
+        this.totalMoves += this.moves;
+        this.totalGenMoves += this.genMoves;
 
         console.log('Nodes searched:', this.nodes, 'Total nodes: ', this.totalNodes);
+        console.log('Moves made:', this.moves, 'Total moves: ', this.totalMoves);
+        console.log('Gen Moves made:', this.genMoves, 'Total gen moves: ', this.totalGenMoves);
         console.log('Move time:', new Date - startTime);
 
         // Execute move on real engine
         this.engine.MovePiece(best.fr, best.fc, best.tr, best.tc, best.promote);
     }
 
-    bestMove(depth = this.depth) {
-        const engine = this.engine;
-        const moves = engine.getPlayerLegalMoves(engine.turn === 0);
-            if (moves.length == 0) {
-                console.log('NO MOVES');
-                return null;
-            }
+    bestMove(timeLimit = this.timeLimit, maxDepth = 100) {
+        const startTime = Date.now();
+        let deadline = timeLimit ? (startTime + timeLimit) : null;
 
-        const copy = engine.clone();
+        const copy = this.engine.clone();
+
+        const moves = copy.getPlayerLegalMoves(copy.turn === 0);
+        this.genMoves++;
+        if (moves.length == 0) return null;
+
+        let globalBestMove = null;
+        let globalBestScore = -this.INFINITY;
 
         // Move ordering
-        moves.sort((a, b) => this.scoreMove(copy, b, depth) - this.scoreMove(copy, a, depth));
+        moves.sort((a, b) => this.scoreMove(copy, b) - this.scoreMove(copy, a));
 
-        let bestScore = -Infinity;
-        let bestMove = null;
-
-        for (const move of moves) {
-            const moved = copy.MovePiece(move.fr, move.fc, move.tr, move.tc, move.promote);
-            if (!moved) continue;
-
-            let score = this.minimax(copy, depth - 1, -Infinity, Infinity, '', '');
-            score = -score;
-
-            copy.undoMove();
-
-            if (score > bestScore) {
-                bestScore = score;
-                bestMove = move;
+        for (let d = 1; d <= maxDepth; d++) {
+            if (deadline && Date.now() > deadline) {
+                console.log(`Stopping ID at depth ${d-1} due to time limit`);
+                break;
             }
+
+            if (globalBestMove) {
+                const idx = moves.findIndex(m => m.fr === globalBestMove.fr && m.fc === globalBestMove.fc &&
+                                                m.tr === globalBestMove.tr && m.tc === globalBestMove.tc &&
+                                                (m.promote || null) === (globalBestMove.promote || null));
+                if (idx > 0) {
+                    moves.unshift(moves.splice(idx, 1)[0]);
+                }
+            }
+
+            let alpha = -this.INFINITY;
+            let beta = this.INFINITY;
+
+            let bestMoveDepth = null;
+            let bestScoreDepth = -this.INFINITY;
+
+            let timedOut = false;
+
+            for (let i = 0; i < moves.length; i++) {
+                if (deadline && Date.now() > deadline) {
+                    console.log(`Time exceeded during root move loop at depth ${d}`);
+                    timedOut = true;
+                    break;
+                }
+
+                const move = moves[i];
+                const moved = copy.MovePiece(move.fr, move.fc, move.tr, move.tc, move.promote);
+                if (!moved) continue;
+                this.moves++;
+
+                let score;
+                if (i === 0) {
+                    // Full-window for the first move
+                    score = -this.minimax(copy, d - 1, -beta, -alpha);
+                } else {
+                    // Narrow-window (PVS)
+                    score = -this.minimax(copy, d - 1, -alpha - 1, -alpha);
+                    if (score > alpha) {
+                        // Research with full window
+                        score = -this.minimax(copy, d - 1, -beta, -alpha);
+                    }
+                }
+
+                copy.undoMove();
+
+                // if (score == this.INFINITY || score == -this.INFINITY) continue;
+
+                if (score > bestScoreDepth || !bestMoveDepth) {
+                    bestScoreDepth = score;
+                    bestMoveDepth = move;
+                }
+
+                if (score > alpha) {
+                    alpha = score;
+                }
+            }
+
+            if (timedOut) break;
+
+            globalBestMove = bestMoveDepth;
+            globalBestScore = bestScoreDepth;
+
+            console.log( globalBestMove, globalBestScore, d);
         }
 
-        if (bestScore == -Infinity) {
-            console.log('NO LEGAL', moves, copy.turn);
-            return null;
-        }
-
-        console.log('Best move:', bestMove, bestScore);
-
-        return bestMove;
+        console.log('Best move:', globalBestMove, globalBestScore);
+        return globalBestMove;
     }
 
-    minimax(engineState, depth, alpha, beta) {
+
+    minimax(engineState, depth, alpha, beta, allowNull = true) {
         this.nodes++;
 
         // Check TT
         const alphaOrig = alpha;
         const key = engineState.zobrist.hash;
-        if (this.TT.has(key)) {
-            const entry = this.TT.get(key);
 
-            if (entry.depth >= depth) {
-                if (entry.flag === 'EXACT') return entry.value;
-                if (entry.flag === 'LOWERBOUND') alpha = Math.max(alpha, entry.value);
-                if (entry.flag === 'UPPERBOUND') beta = Math.min(beta, entry.value);
-                if (alpha >= beta) return entry.value;
-            }
+        const ttEntry = this.TT.get(key);
+        if (ttEntry && ttEntry.depth >= depth) {
+            if (ttEntry.flag === 'EXACT') return ttEntry.value;
+            if (ttEntry.flag === 'LOWERBOUND') alpha = Math.max(alpha, ttEntry.value);
+            if (ttEntry.flag === 'UPPERBOUND') beta = Math.min(beta, ttEntry.value);
+            if (alpha >= beta) return ttEntry.value;
         }
 
         // Terminal condition
@@ -171,28 +233,44 @@ export class AI {
             return this.quiescence(engineState, alpha, beta, 0);
         }
 
-        const isChecked = engineState.isKingInCheck(engineState.turn === 0);
+        const inCheck = engineState.isKingInCheck(engineState.turn === 0);
+
+        if (allowNull && depth >= 3 && !inCheck && engineState.hasNonPawnMaterial(engineState.turn)) {
+            const R = Math.min(depth - 1, depth >= 6 ? 3 : 2);
+                if (R > 0) {
+                    const prevEp = engineState.enPassantSquare;
+                    const prevHash = engineState.zobrist.hash;
+
+                    engineState.makeNullMove();
+
+                    const score = -this.minimax(engineState, depth - 1 - R, -beta, -beta + 1, false);
+
+                    engineState.undoNullMove(prevEp, prevHash);
+
+                    if (score >= beta) {
+                        return beta; // fail-high
+                    }
+                }
+        }
 
         // Futility Prune
         let futilityPrune = false;
-        if (depth === 1) {
-            const standPat = this.evaluate(engineState).score;
-
-            const futilityMargin = 150;
-
+        if (depth === 1 && !inCheck) {
+            const standPat = this.evaluate(engineState);
             // If eval is so bad that even a quiet move can't raise alpha
-            if (!isChecked && standPat + futilityMargin <= alpha) {
+            if (standPat + 150 <= alpha) {
                 futilityPrune = true;
             }
         }
 
         let moves = engineState.getPlayerLegalMoves(engineState.turn === 0);
+        this.genMoves++;
             if (moves.length === 0) return this.quiescence(engineState, alpha, beta, 0);
 
         // Order moves
         moves.sort((a, b) => this.scoreMove(engineState, b, depth) - this.scoreMove(engineState, a, depth));
 
-        let best = -Infinity;
+        let best = -this.INFINITY;
         let bestMove = null;
 
         let moveIndex = 0;
@@ -209,26 +287,23 @@ export class AI {
 
             const moved = engineState.MovePiece(move.fr, move.fc, move.tr, move.tc, move.promote);
             if (!moved) continue;
+            this.moves++;
 
             let score;
 
             // Late Move Reduction
-            if (depth >= 3 && moveIndex >= 4 && !isCapture && !isPromotion) {
+            if (depth >= 3 && moveIndex >= 4 && !isCapture && !isPromotion && !inCheck) {
                 // Reduced search
-                score = this.minimax(engineState, depth - 2, -alpha - 1, -alpha);
+                score = -this.minimax(engineState, depth - 2, -alpha - 1, -alpha);
 
                 // Re-search if it improved alpha
                 if (score > alpha) {
-                    score = this.minimax(engineState, depth - 1, -beta, -alpha);
+                    score = -this.minimax(engineState, depth - 1, -beta, -alpha);
                 }
             } else {
                 // Negamax
-                score = this.minimax(engineState, depth - 1, -beta, -alpha);
+                score = -this.minimax(engineState, depth - 1, -beta, -alpha);
             }
-
-            score = -score;
-
-            if (isNaN(score) || score == Infinity) console.log('SCORE IS INVALID', score);
 
             engineState.undoMove();
 
@@ -240,6 +315,7 @@ export class AI {
                 alpha = score;
             }
 
+            // Cutoff
             if (alpha >= beta) {
                 // Store killer move
                 if (!this.killerMoves[depth]) this.killerMoves[depth] = [];
@@ -253,14 +329,13 @@ export class AI {
                 const targetBefore = engineState.getPiece(move.tr, move.tc);
                 const isCapture = !engineState.isEmpty(targetBefore);
 
-                if (!isCapture && !move.promote) {
+                if (!isCapture && !isPromotion) {
                     const idxFrom = move.fr * engineState.cols + move.fc;
                     const idxTo   = move.tr * engineState.cols + move.tc;
 
-                    this.history[idxFrom][idxTo] += depth ^ 2;
+                    this.history[idxFrom][idxTo] += depth * depth;
                 }
-
-                break; // alpha–beta cutoff
+                break;
             }
         }
 
@@ -270,7 +345,7 @@ export class AI {
         else if (best >= beta) flag = 'LOWERBOUND';
         this.TT.set(key, { value: best, depth, flag, bestMove });
 
-        if (best == -Infinity) return this.quiescence(engineState, alpha, beta, 0);
+        if (best == -this.INFINITY) return this.quiescence(engineState, alpha, beta, 0);
 
         return best;
     }
@@ -328,6 +403,7 @@ export class AI {
         // Only captures or promotions
         const moves = engineState.getPlayerLegalMoves(engineState.turn === 0)
             .filter(m => !engineState.isEmpty(engineState.getPiece(m.tr, m.tc)) || m.promote);
+        this.genMoves++;
 
         // Move ordering
         moves.sort((a, b) => this.scoreMove(engineState, b) - this.scoreMove(engineState, a));
@@ -347,11 +423,10 @@ export class AI {
 
             const moved = engineState.MovePiece(move.fr, move.fc, move.tr, move.tc, move.promote);
             if (!moved) continue;
+            this.moves++;
 
             let score = this.quiescence(engineState, -beta, -alpha, qDepth + 1);
             score = -score;
-
-            if (isNaN(score) || score == Infinity) console.log('SCORE IS INVALID', score);
 
             engineState.undoMove();
 
@@ -461,15 +536,8 @@ export class AI {
         score += engineState.castlingRights.blackKingSide ? -5 : 5;
         score += engineState.castlingRights.blackQueenSide ? -5 : 5;
 
-        // Mobility
-        const whiteMoves = engineState.getPlayerLegalMoves(true);
-        const blackMoves = engineState.getPlayerLegalMoves(false);
-        score += (whiteMoves.length - blackMoves.length) * 10;
-
         // Discourage long games
         score -= engineState.totalPlies * 2;
-
-        if (isNaN(score) || score == Infinity) console.log('SCORE IS INVALID', score);
 
         return score * side;
     }
