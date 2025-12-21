@@ -45,5 +45,5 @@ My ai (20/12 20:00 t=2s) vs Stockfish (listudy.org)     Black Won   196474  56  
 My ai (20/12 20:00 t=2s) vs Stockfish (listudy.org)     Black Won   977518  76      No Mobility
 
 tips:
-
+remove bitboards 2 int, and move to bigint
 make move gen return ints not objects.
