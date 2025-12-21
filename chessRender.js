@@ -116,7 +116,7 @@ export class ChessRender {
             return;
         }
 
-        sq.style.setProperty('--bg-img', `url(${this.assetPrefix + (this.engine.isWhite(piece) ? 'w' : 'b') + piece.toLowerCase()}.png)`);
+        sq.style.setProperty('--bg-img', `url(${this.assetPrefix + (this.engine.isWhitePiece(piece) ? 'w' : 'b') + piece.toLowerCase()}.png)`);
     }
 
     UpdateGame() {
@@ -128,10 +128,12 @@ export class ChessRender {
         document.querySelectorAll('.light-selected').forEach(sq => sq.classList.remove('light-selected'));
         if (this.engine.logs.length > 0) {
             const lastMove = this.engine.logs[this.engine.logs.length - 1];
+            const { r: fr, c: fc } = this.engine.fromSq(lastMove.fromSq);
+            const { r: tr, c: tc } = this.engine.fromSq(lastMove.toSq);
 
-            const fsq = this.boardEl.querySelector(`.square[data-row="${lastMove.fr}"][data-col="${lastMove.fc}"]`);
+            const fsq = this.boardEl.querySelector(`.square[data-row="${fr}"][data-col="${fc}"]`);
                 if (!fsq) return;
-            const tsq = this.boardEl.querySelector(`.square[data-row="${lastMove.tr}"][data-col="${lastMove.tc}"]`);
+            const tsq = this.boardEl.querySelector(`.square[data-row="${tr}"][data-col="${tc}"]`);
                 if (!tsq) return;
             
             fsq.classList.add('light-selected');
@@ -166,13 +168,15 @@ export class ChessRender {
         document.querySelectorAll('.checked').forEach(sq => sq.classList.remove('checked'));
 
         if (this.whiteKingChecked) {
-            const { r, c } = this.engine.getKing(true);
+            const kingSq = this.engine.getKing(true);
+            const { r, c } = this.engine.fromSq(kingSq);
 
             const sq = document.querySelector(`.square[data-row="${r}"][data-col="${c}"]`);
             if (sq) sq.classList.add('checked');
         }
         if (this.blackKingChecked) {
-            const { r, c } = this.engine.getKing(false);
+            const kingSq = this.engine.getKing(false);
+            const { r, c } = this.engine.fromSq(kingSq);
 
             const sq = document.querySelector(`.square[data-row="${r}"][data-col="${c}"]`);
             if (sq) sq.classList.add('checked');
@@ -299,8 +303,11 @@ export class ChessRender {
 
         // Case 3: has previous target and a valid new target -> move piece
         if (this.lastSelected != null && e.target.classList.contains('highlight')) {
-            console.log('Move from', this.lastSelected?.row, this.lastSelected?.col, 'to', row, col);
-            this.engine.MovePiece(this.lastSelected?.row, this.lastSelected?.col, row, col);
+            const fromSq = this.engine.toSq(this.lastSelected?.row, this.lastSelected?.col);
+            const toSq = this.engine.toSq(row, col);
+
+            console.log('Move from', fromSq, 'to', toSq);
+            this.engine.MovePiece(fromSq, toSq);
 
             return false;
         }
@@ -308,14 +315,15 @@ export class ChessRender {
         const piece = this.engine.getPiece(row, col);
 
         // Case 4: click on empty square -> clear selection
-        if (this.engine.isEmpty(piece)) {
+        if (this.engine.isEmptyPiece
+            (piece)) {
             console.log('Clicked empty -> clear selection');
 
             return false;
         }
 
         // Case 5: click on piece of the oponent → clear selection
-        if ((this.engine.isWhite(piece) && this.engine.turn != 0) || (this.engine.isBlack(piece) && this.engine.turn != 1)) {
+        if ((this.engine.isWhitePiece(piece) && this.engine.turn != 0) || (this.engine.isBlackPiece(piece) && this.engine.turn != 1)) {
             console.log('Clicked oponent piece -> clear selection');
 
             return false;
@@ -334,14 +342,16 @@ export class ChessRender {
 
         const startTime = performance.now();
 
-        const moves = this.engine.getLegalMoves(row, col);
+        const moves = this.engine.getLegalMoves(this.engine.toSq(row, col));
 
         const finalTime = performance.now() - startTime;
         console.log('getLegalMoves:', finalTime);
 
-        moves.forEach(([row, col, promote]) => {
-            const sq = document.querySelector(`.square[data-row="${row}"][data-col="${col}"]`);
-            if (sq) sq.classList.add('highlight');
+        moves.forEach(([sq, promote]) => {
+            const { r, c } = this.engine.fromSq(sq);
+
+            const sqEl = document.querySelector(`.square[data-row="${r}"][data-col="${c}"]`);
+            if (sqEl) sqEl.classList.add('highlight');
         });
     }
 
@@ -350,7 +360,10 @@ export class ChessRender {
     }
 
 
-    async Promote(fr, fc, tr, tc) {
+    async Promote(fromSq, toSq) {
+        const { r: fr, c: fc } = this.engine.fromSq(fromSq);
+        const { r: tr, c: tc } = this.engine.fromSq(toSq);
+
         this.promotionScreen.classList.remove('black');
         await delay(100);
 

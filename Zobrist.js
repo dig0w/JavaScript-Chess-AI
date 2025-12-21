@@ -31,9 +31,8 @@ export class Zobrist {
     }
 
     // Piece
-    xorPiece(piece, r, c) {
+    xorPiece(piece, sq) {
         if (!piece || piece === '.') return;
-        const sq = (this.rows - 1 - r) * this.cols + c;
         this.hash ^= this.piece[piece][sq];
     }
 

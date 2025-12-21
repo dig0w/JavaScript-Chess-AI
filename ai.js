@@ -119,7 +119,7 @@ export class AI {
         console.log('Move time:', new Date - startTime);
 
         // Execute move on real engine
-        this.engine.MovePiece(best.fr, best.fc, best.tr, best.tc, best.promote);
+        this.engine.MovePiece(best.fromSq, best.toSq, best.promote);
     }
 
     bestMove(timeLimit = this.timeLimit, maxDepth = 100) {
@@ -145,12 +145,8 @@ export class AI {
             }
 
             if (globalBestMove) {
-                const idx = moves.findIndex(m => m.fr === globalBestMove.fr && m.fc === globalBestMove.fc &&
-                                                m.tr === globalBestMove.tr && m.tc === globalBestMove.tc &&
-                                                (m.promote || null) === (globalBestMove.promote || null));
-                if (idx > 0) {
-                    moves.unshift(moves.splice(idx, 1)[0]);
-                }
+                const idx = moves.findIndex(m => m.fromSq === globalBestMove.fromSq && m.toSq === globalBestMove.toSq && m.promote === globalBestMove.promote);
+                if (idx > 0) moves.unshift(moves.splice(idx, 1)[0]);
             }
 
             let alpha = -this.INFINITY;
@@ -169,7 +165,7 @@ export class AI {
                 }
 
                 const move = moves[i];
-                const moved = copy.MovePiece(move.fr, move.fc, move.tr, move.tc, move.promote);
+                const moved = copy.MovePiece(move.fromSq, move.toSq, move.promote);
                 if (!moved) continue;
                 this.moves++;
 
@@ -237,20 +233,18 @@ export class AI {
 
         if (allowNull && depth >= 3 && !inCheck && engineState.hasNonPawnMaterial(engineState.turn)) {
             const R = Math.min(depth - 1, depth >= 6 ? 3 : 2);
-                if (R > 0) {
-                    const prevEp = engineState.enPassantSquare;
-                    const prevHash = engineState.zobrist.hash;
+            if (R > 0) {
+                const prevEp = engineState.enPassantSquare;
+                const prevHash = engineState.zobrist.hash;
 
-                    engineState.makeNullMove();
+                engineState.makeNullMove();
 
-                    const score = -this.minimax(engineState, depth - 1 - R, -beta, -beta + 1, false);
+                const score = -this.minimax(engineState, depth - 1 - R, -beta, -beta + 1, false);
 
-                    engineState.undoNullMove(prevEp, prevHash);
+                engineState.undoNullMove(prevEp, prevHash);
 
-                    if (score >= beta) {
-                        return beta; // fail-high
-                    }
-                }
+                if (score >= beta) return beta; // fail-high
+            }
         }
 
         // Futility Prune
@@ -278,14 +272,13 @@ export class AI {
         for (const move of moves) {
             moveIndex++;
 
-            const target = engineState.getPiece(move.tr, move.tc);
-            const isCapture = !engineState.isEmpty(target);
+            const isCapture = !engineState.isEmpty(move.toSq);
             const isPromotion = !!move.promote;
 
             // Futility prune
             if (futilityPrune && !isCapture && !isPromotion) continue; // prune quiet move
 
-            const moved = engineState.MovePiece(move.fr, move.fc, move.tr, move.tc, move.promote);
+            const moved = engineState.MovePiece(move.fromSq, move.toSq, move.promote);
             if (!moved) continue;
             this.moves++;
 
@@ -320,21 +313,15 @@ export class AI {
                 // Store killer move
                 if (!this.killerMoves[depth]) this.killerMoves[depth] = [];
                 const km = this.killerMoves[depth];
-                if (!km.some(k => k.fr === move.fr && k.fc === move.fc && k.tr === move.tr && k.tc === move.tc && k.promote === move.promote)) {
-                    km.unshift({ fr: move.fr, fc: move.fc, tr: move.tr, tc: move.tc, promote: move.promote });
+                if (!km.some(k => k.fromSq === move.fromSq && k.toSq === move.toSq && k.promote === move.promote)) {
+                    km.unshift({ fromSq: move.fromSq, toSq: move.toSq, promote: move.promote });
                     if (km.length > 2) km.pop();
                 }
 
                 // Store History
-                const targetBefore = engineState.getPiece(move.tr, move.tc);
-                const isCapture = !engineState.isEmpty(targetBefore);
+                const isCapture = !engineState.isEmpty(move.toSq);
+                if (!isCapture && !isPromotion) this.history[move.fromSq][move.toSq] += depth * depth;
 
-                if (!isCapture && !isPromotion) {
-                    const idxFrom = move.fr * engineState.cols + move.fc;
-                    const idxTo   = move.tr * engineState.cols + move.tc;
-
-                    this.history[idxFrom][idxTo] += depth * depth;
-                }
                 break;
             }
         }
@@ -351,13 +338,13 @@ export class AI {
     }
 
     scoreMove(engineState, move, depthKey = -1) {
-        const target = engineState.getPiece(move.tr, move.tc);
-        const moving = engineState.getPiece(move.fr, move.fc);
+        const moving = engineState.getPieceSq(move.fromSq);
+        const target = engineState.getPieceSq(move.toSq);
 
         let score = 0;
 
         // 1. MVV-LVA for captures
-        if (!engineState.isEmpty(target)) {
+        if (!engineState.isEmpty(move.toSq)) {
             const victimValue = this.pieceValues[target.toUpperCase()] || 0;
             const attackerValue = this.pieceValues[moving.toUpperCase()] || 0;
             score += victimValue * 10 - attackerValue;
@@ -367,25 +354,21 @@ export class AI {
         if (move.promote) score += 1000;
 
         // 3. Checks
-        if (!engineState.moveKeepsKingSafe(move.fr, move.fc, move.tr, move.tc, true)) score += 50;
+        if (!engineState.moveKeepsKingSafe(move.fromSq, move.toSq, true)) score += 50;
 
         // 4. Killer move heuristic
         const km = this.killerMoves[depthKey];
         if (km) {
             for (let i = 0; i < km.length; i++) {
                 const k = km[i];
-                if (k.fr === move.fr && k.fc === move.fc && k.tr === move.tr && k.tc === move.tc && k.promote === move.promote) {
+                if (k.fromSq === move.fromSq && k.toSq === move.toSq && k.promote === move.promote) {
                     score += (i === 0) ? 750 : 500;
                 }
             }
         }
 
         // 5. History heuristic
-        if (engineState.isEmpty(target) && !move.promote) {
-            const fromIdx = move.fr * engineState.cols + move.fc;
-            const toIdx = move.tr * engineState.cols + move.tc;
-            score += this.history[fromIdx][toIdx];
-        }
+        if (engineState.isEmpty(move.toSq) && !move.promote) score += this.history[move.fromSq][move.toSq];
 
         return score;
     }
@@ -401,8 +384,7 @@ export class AI {
         }
 
         // Only captures or promotions
-        const moves = engineState.getPlayerLegalMoves(engineState.turn === 0)
-            .filter(m => !engineState.isEmpty(engineState.getPiece(m.tr, m.tc)) || m.promote);
+        const moves = engineState.getPlayerLegalMoves(engineState.turn === 0).filter(m => !engineState.isEmpty(m.toSq) || m.promote);
         this.genMoves++;
 
         // Move ordering
@@ -410,8 +392,8 @@ export class AI {
 
         for (const move of moves) {
             // Delta Prune
-            const target = engineState.getPiece(move.tr, move.tc);
-            if (engineState.isEmpty(target) === false) {
+            if (engineState.isEmpty(move.toSq) === false) {
+                const target = engineState.getPieceSq(move.toSq);
                 const victimValue = this.pieceValues[target.toUpperCase()] || 0;
                 const deltaMargin = 100; // small safety buffer
 
@@ -421,7 +403,7 @@ export class AI {
                 }
             }
 
-            const moved = engineState.MovePiece(move.fr, move.fc, move.tr, move.tc, move.promote);
+            const moved = engineState.MovePiece(move.fromSq, move.toSq, move.promote);
             if (!moved) continue;
             this.moves++;
 

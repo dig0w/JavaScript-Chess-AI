@@ -54,29 +54,21 @@ export class BitBoard {
         let hi = this.hi, lo = this.lo;
 
         // loop until both are empty
-        while (hi || lo) {
-            let idx;
+        for (let x = lo; x; x &= x - 1)
+            out.push(31 - Math.clz32(x & -x));
 
-            if (hi) {
-                const bit = 31 - Math.clz32(hi);
-                idx = 32 + bit;
-                hi &= ~(1 << bit);
-            } else {
-                const bit = 31 - Math.clz32(lo);
-                idx = bit;
-                lo &= ~(1 << bit);
-            }
-
-            out.push(idx);
-        }
+        for (let x = hi; x; x &= x - 1)
+            out.push(63 - Math.clz32(x & -x));
 
         return out;
     }
 
     // --- useful checks ---
     has(sq) {
-        if (sq < 32) return (this.lo & (1 << sq)) !== 0;
-        else return (this.hi & (1 << (sq - 32))) !== 0;
+        // if (sq < 32) return (this.lo & (1 << sq)) !== 0;
+        // else return (this.hi & (1 << (sq - 32))) !== 0;
+        const mask = 1 << (sq & 31);
+        return ((sq < 32 ? this.lo : this.hi) & mask) !== 0;
     }
     isZero() { return (this.hi | this.lo) === 0; }
 
