@@ -5,9 +5,9 @@ export class ChessEngine {
     static pawnMovesWhite = Array(64);
     static pawnMovesBlack = Array(64);
     static knightMoves = Array(64);
-    static rookRays = Array(64);
-    static bishopRays = Array(64);
-    static queenRays = Array(64);
+    static rookRays = Array.from({ length: 64 }, () => new Array(4));
+    static bishopRays = Array.from({ length: 64 }, () => new Array(4));
+    static queenRays = Array.from({ length: 64 }, () => new Array(8));
     static kingMoves = Array(64);
 
     static fileMasks = Array(8);
@@ -539,14 +539,14 @@ export class ChessEngine {
 
                 // Diagonal captures
                 for (const tsq of attacks.allSquares()) {
-                    moves.push([ tsq, null ]);
+                    moves.push([ sq, tsq, null ]);
                 }
 
                 // Forward pushes
                 const dir = (isWhite ? 1 : -1) * this.cols;
                 const forward = sq + dir;
                 if (forward >= 0 && forward < this.squares && this.isEmpty(forward)) {
-                    moves.push([forward, null]);
+                    moves.push([ sq, forward, null ]);
 
                     // Double push from starting rank
                     if (this.isNormal) {
@@ -555,7 +555,7 @@ export class ChessEngine {
                         if (startRank) {
                             const doubleForward = forward + dir;
                             if (doubleForward >= 0 && doubleForward < this.squares && this.isEmpty(doubleForward)) {
-                                moves.push([doubleForward, null]);
+                                moves.push([ sq, doubleForward, null ]);
                             }
                         }
                     }
@@ -569,7 +569,7 @@ export class ChessEngine {
 
                     if (toSq >= promoStart && toSq < promoEnd && moves[i][1] == null) {
                         for (const promote of this.promoPieces) {
-                            moves.push([ moves[i][0], promote ]);
+                            moves.push([ sq, moves[i][0], promote ]);
                         }
 
                         moves.splice(i, 1);
@@ -581,7 +581,7 @@ export class ChessEngine {
                 if (this.isNormal) {
                     const epSq = this.enPassantSquare;
                     if (epSq !== null && epSq !== -1) {
-                        if (epSq === sq + dir - 1 || epSq === sq + dir + 1) moves.push([epSq, null]);
+                        if (epSq === sq + dir - 1 || epSq === sq + dir + 1) moves.push([ sq, epSq, null ]);
                     }
                 }
                 break;
@@ -589,7 +589,7 @@ export class ChessEngine {
             case 'n':
                 attacks = ChessEngine.knightMoves[sq].and(ownOccupied.not());
                 for (const tsq of attacks.allSquares()) {
-                    moves.push([ tsq, null ]);
+                    moves.push([ sq, tsq, null ]);
                 }
                 break;
             // Rook
@@ -600,7 +600,7 @@ export class ChessEngine {
             case 'q':
                 attacks = this.getSlidingMoves(piece.toLowerCase(), sq).and(ownOccupied.not());
                 for (const tsq of attacks.allSquares()) {
-                    moves.push([ tsq, null ]);
+                    moves.push([ sq, tsq, null ]);
                 }
                 break;
             // King
@@ -609,7 +609,7 @@ export class ChessEngine {
                 for (const tsq of attacks.allSquares()) {
                     if (this.isSquareAttacked(tsq, isWhite)) continue;
 
-                    moves.push([ tsq, null ]);
+                    moves.push([ sq, tsq, null ]);
                 }
 
                 // Castling
@@ -627,7 +627,7 @@ export class ChessEngine {
                             !this.isSquareAttacked(kingStartSq, isWhite) &&
                             !this.isSquareAttacked(kingStartSq + 1, isWhite) &&
                             !this.isSquareAttacked(kingStartSq + 2, isWhite)
-                        ) moves.push([ kingStartSq + 2, null ]);
+                        ) moves.push([ sq, kingStartSq + 2, null ]);
 
                         // Queen-side
                         if (queenSide &&
@@ -637,13 +637,13 @@ export class ChessEngine {
                             !this.isSquareAttacked(kingStartSq, isWhite) &&
                             !this.isSquareAttacked(kingStartSq - 1, isWhite) &&
                             !this.isSquareAttacked(kingStartSq - 2, isWhite)
-                        ) moves.push([ kingStartSq - 2, null ]);
+                        ) moves.push([ sq, kingStartSq - 2, null ]);
                     }
                 }
                 break;
         }
 
-        moves = moves.filter(m => this.moveKeepsKingSafe(sq, m[0]));
+        moves = moves.filter(m => this.moveKeepsKingSafe(sq, m[1]));
         return moves;
     }
 
@@ -661,11 +661,7 @@ export class ChessEngine {
             // iterate through every piece position (much faster than 64-square scan)
             for (let sq = bb.bitIndex(); sq !== -1; bb.clearBit(sq), sq = bb.bitIndex()) {
                 // getLegalMoves already returns only pseudo legal moves
-                const targets = this.getLegalMoves(sq);
-
-                for (const [toSq, promote] of targets) {
-                    moves.push({ fromSq: sq, toSq, promote });
-                }
+                moves.push(...this.getLegalMoves(sq));
             }
         }
 
@@ -1066,34 +1062,37 @@ export class ChessEngine {
             // Directions for rook and bishop sliding
             const rookDirs   = [[1, 0], [-1, 0], [0, 1], [0, -1]];
             const bishopDirs = [[1, 1], [1, -1], [-1, 1], [-1, -1]];
-                
-                let rookBB   = new BitBoard();
-                let bishopBB = new BitBoard();
+
+            let rookRays = [];
+            let bishopRays = [];
 
             // Rook rays
             for (const [dr,dc] of rookDirs) {
-                let rr = r + dr, cc = c + dc;
+                let raySquares = [];
+                let rr = r+dr, cc = c+dc;
                 while (inBoard(rr,cc)) {
-                    add(rookBB, this.toSq(rr, cc));
+                    raySquares.push(this.toSq(rr, cc));
                     rr += dr; cc += dc;
                 }
+                rookRays.push(raySquares);
             }
 
             // Bishop rays
             for (const [dr,dc] of bishopDirs) {
-                let rr = r + dr, cc = c + dc;
+                let raySquares = [];
+                let rr = r+dr, cc = c+dc;
                 while (inBoard(rr,cc)) {
-                    add(bishopBB, this.toSq(rr, cc));
+                    raySquares.push(this.toSq(rr, cc));
                     rr += dr; cc += dc;
                 }
+                bishopRays.push(raySquares);
             }
 
-            ChessEngine.rookRays[sq]   = rookBB;
-            ChessEngine.bishopRays[sq] = bishopBB;
+            ChessEngine.rookRays[sq] = rookRays;
+            ChessEngine.bishopRays[sq] = bishopRays;
 
             // Queen = rook + bishop
-            let q = rookBB.clone().or(bishopBB);
-            ChessEngine.queenRays[sq] = q;
+            ChessEngine.queenRays[sq] = rookRays.concat(bishopRays);
 
             // King moves
             let kbb = new BitBoard();
@@ -1106,7 +1105,8 @@ export class ChessEngine {
             ChessEngine.kingMoves[sq] = kbb;
         }
 
-        for (let c = 0; c < this.cols; c++) {
+        // File masks
+        for (let c = 0; c < 8; c++) {
             const bb = new BitBoard();
             for (let r = 0; r < this.rows; r++) {
                 bb.setBit(this.toSq(r, c));
@@ -1115,33 +1115,23 @@ export class ChessEngine {
         }
     }
 
-    getSlidingMoves(type, fsq) {
+    getSlidingMoves(type, fromSq) {
         const occupied = this.occupied;
-        const { r: fr, c: fc } = this.fromSq(fsq);
 
         let rays;
         switch(type) {
-            case 'r': rays = ChessEngine.rookRays[fsq]; break;
-            case 'b': rays = ChessEngine.bishopRays[fsq]; break;
-            case 'q': rays = ChessEngine.queenRays[fsq]; break;
+            case 'r': rays = ChessEngine.rookRays[fromSq]; break;
+            case 'b': rays = ChessEngine.bishopRays[fromSq]; break;
+            case 'q': rays = ChessEngine.queenRays[fromSq]; break;
         }
 
-        let moves = rays.clone();
+        let moves = new BitBoard();
 
-        for (let tsq of rays.allSquares()) {
-            if (occupied.has(tsq)) {
-                const { r: tr, c: tc } = this.fromSq(tsq);
+        for (const ray of rays) {
+            for (const targetSq of ray) {
+                moves.setBit(targetSq);
 
-                const dirR = Math.sign(tr - fr);
-                const dirC = Math.sign(tc - fc);
-
-                let rr = tr + dirR;
-                let cc = tc + dirC;
-                while (rr >= 0 && rr < this.rows && cc >= 0 && cc < this.cols) {
-                    moves.clearBit(this.toSq(rr, cc));
-                    rr += dirR;
-                    cc += dirC;
-                }
+                if (occupied.has(targetSq)) break;
             }
         }
 

@@ -293,6 +293,8 @@ export class ChessRender {
         const row = +e.target.dataset.row;
         const col = +e.target.dataset.col;
 
+        console.log('Square: ', this.engine.toSq(row, col));
+
         const clickedSame =
             this.lastSelected &&
             this.lastSelected.row === row &&
@@ -347,8 +349,8 @@ export class ChessRender {
         const finalTime = performance.now() - startTime;
         console.log('getLegalMoves:', finalTime);
 
-        moves.forEach(([sq, promote]) => {
-            const { r, c } = this.engine.fromSq(sq);
+        moves.forEach(([ fsq, tsq, promote ]) => {
+            const { r, c } = this.engine.fromSq(tsq);
 
             const sqEl = document.querySelector(`.square[data-row="${r}"][data-col="${c}"]`);
             if (sqEl) sqEl.classList.add('highlight');

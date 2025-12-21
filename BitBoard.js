@@ -65,10 +65,8 @@ export class BitBoard {
 
     // --- useful checks ---
     has(sq) {
-        // if (sq < 32) return (this.lo & (1 << sq)) !== 0;
-        // else return (this.hi & (1 << (sq - 32))) !== 0;
-        const mask = 1 << (sq & 31);
-        return ((sq < 32 ? this.lo : this.hi) & mask) !== 0;
+        if (sq < 32) return (this.lo & (1 << sq)) !== 0;
+        else return (this.hi & (1 << (sq - 32))) !== 0;
     }
     isZero() { return (this.hi | this.lo) === 0; }
 
@@ -95,6 +93,18 @@ export class BitBoard {
 
     popcount() { return this.popcount32(this.lo) + this.popcount32(this.hi); }
 
+    lsb() {
+        if (this.lo !== 0) {
+            const lsb = this.lo & -this.lo;          // isolate lowest bit
+            return Math.clz32(lsb) ^ 31;            // position 0–31
+        }
+        if (this.hi !== 0) {
+            const lsb = this.hi & -this.hi;
+            return 32 + (Math.clz32(lsb) ^ 31);     // position 32–63
+        }
+        return -1;  // no bits set
+    }
+    
     popLSB() {
         // If there are bits in lo we take from there
         if (this.lo !== 0) {

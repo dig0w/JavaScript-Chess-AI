@@ -119,7 +119,7 @@ export class AI {
         console.log('Move time:', new Date - startTime);
 
         // Execute move on real engine
-        this.engine.MovePiece(best.fromSq, best.toSq, best.promote);
+        this.engine.MovePiece(best[0], best[1], best[2]);
     }
 
     bestMove(timeLimit = this.timeLimit, maxDepth = 100) {
@@ -145,7 +145,7 @@ export class AI {
             }
 
             if (globalBestMove) {
-                const idx = moves.findIndex(m => m.fromSq === globalBestMove.fromSq && m.toSq === globalBestMove.toSq && m.promote === globalBestMove.promote);
+                const idx = moves.findIndex(m => m[0] === globalBestMove[0] && m[1] === globalBestMove[1] && m[2] === globalBestMove[2]);
                 if (idx > 0) moves.unshift(moves.splice(idx, 1)[0]);
             }
 
@@ -165,7 +165,7 @@ export class AI {
                 }
 
                 const move = moves[i];
-                const moved = copy.MovePiece(move.fromSq, move.toSq, move.promote);
+                const moved = copy.MovePiece(move[0], move[1], move[2]);
                 if (!moved) continue;
                 this.moves++;
 
@@ -272,13 +272,13 @@ export class AI {
         for (const move of moves) {
             moveIndex++;
 
-            const isCapture = !engineState.isEmpty(move.toSq);
-            const isPromotion = !!move.promote;
+            const isCapture = !engineState.isEmpty(move[1]);
+            const isPromotion = !!move[2];
 
             // Futility prune
             if (futilityPrune && !isCapture && !isPromotion) continue; // prune quiet move
 
-            const moved = engineState.MovePiece(move.fromSq, move.toSq, move.promote);
+            const moved = engineState.MovePiece(move[0], move[1], move[2]);
             if (!moved) continue;
             this.moves++;
 
@@ -313,14 +313,14 @@ export class AI {
                 // Store killer move
                 if (!this.killerMoves[depth]) this.killerMoves[depth] = [];
                 const km = this.killerMoves[depth];
-                if (!km.some(k => k.fromSq === move.fromSq && k.toSq === move.toSq && k.promote === move.promote)) {
-                    km.unshift({ fromSq: move.fromSq, toSq: move.toSq, promote: move.promote });
+                if (!km.some(k => k[0] === move[0] && k[1] === move[1] && k[2] === move[2])) {
+                    km.unshift([ move[0], move[1], move[2] ]);
                     if (km.length > 2) km.pop();
                 }
 
                 // Store History
-                const isCapture = !engineState.isEmpty(move.toSq);
-                if (!isCapture && !isPromotion) this.history[move.fromSq][move.toSq] += depth * depth;
+                const isCapture = !engineState.isEmpty(move[1]);
+                if (!isCapture && !isPromotion) this.history[move[0]][move[1]] += depth * depth;
 
                 break;
             }
@@ -338,37 +338,37 @@ export class AI {
     }
 
     scoreMove(engineState, move, depthKey = -1) {
-        const moving = engineState.getPieceSq(move.fromSq);
-        const target = engineState.getPieceSq(move.toSq);
+        const moving = engineState.getPieceSq(move[0]);
+        const target = engineState.getPieceSq(move[1]);
 
         let score = 0;
 
         // 1. MVV-LVA for captures
-        if (!engineState.isEmpty(move.toSq)) {
+        if (!engineState.isEmpty(move[1])) {
             const victimValue = this.pieceValues[target.toUpperCase()] || 0;
             const attackerValue = this.pieceValues[moving.toUpperCase()] || 0;
             score += victimValue * 10 - attackerValue;
         }
 
         // 2. Promotions
-        if (move.promote) score += 1000;
+        if (move[2]) score += 1000;
 
         // 3. Checks
-        if (!engineState.moveKeepsKingSafe(move.fromSq, move.toSq, true)) score += 50;
+        if (!engineState.moveKeepsKingSafe(move[0], move[1], true)) score += 50;
 
         // 4. Killer move heuristic
         const km = this.killerMoves[depthKey];
         if (km) {
             for (let i = 0; i < km.length; i++) {
                 const k = km[i];
-                if (k.fromSq === move.fromSq && k.toSq === move.toSq && k.promote === move.promote) {
+                if (k[0] === move[0] && k[1] === move[1] && k[2] === move[2]) {
                     score += (i === 0) ? 750 : 500;
                 }
             }
         }
 
         // 5. History heuristic
-        if (engineState.isEmpty(move.toSq) && !move.promote) score += this.history[move.fromSq][move.toSq];
+        if (engineState.isEmpty(move[1]) && !move[2]) score += this.history[move[0]][move[1]];
 
         return score;
     }
@@ -384,7 +384,7 @@ export class AI {
         }
 
         // Only captures or promotions
-        const moves = engineState.getPlayerLegalMoves(engineState.turn === 0).filter(m => !engineState.isEmpty(m.toSq) || m.promote);
+        const moves = engineState.getPlayerLegalMoves(engineState.turn === 0).filter(m => !engineState.isEmpty(m[1]) || m[2]);
         this.genMoves++;
 
         // Move ordering
@@ -392,8 +392,8 @@ export class AI {
 
         for (const move of moves) {
             // Delta Prune
-            if (engineState.isEmpty(move.toSq) === false) {
-                const target = engineState.getPieceSq(move.toSq);
+            if (engineState.isEmpty(move[1]) === false) {
+                const target = engineState.getPieceSq(move[1]);
                 const victimValue = this.pieceValues[target.toUpperCase()] || 0;
                 const deltaMargin = 100; // small safety buffer
 
@@ -403,7 +403,7 @@ export class AI {
                 }
             }
 
-            const moved = engineState.MovePiece(move.fromSq, move.toSq, move.promote);
+            const moved = engineState.MovePiece(move[0], move[1], move[2]);
             if (!moved) continue;
             this.moves++;
 

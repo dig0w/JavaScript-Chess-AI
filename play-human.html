@@ -99,13 +99,7 @@
         let summedTest1 = 0;
         let summedTest2 = 0;
 
-        const move = {
-            "fr": 6,
-            "fc": 0,
-            "tr": 5,
-            "tc": 0,
-            "promote": null
-        };
+        const move = [ 8, 16, null ];
 
         const copy = chess.clone();
 
@@ -128,7 +122,7 @@
 
         console.log('Runned tests', epoch, 'times');
         console.log('Avg getPlayerLegalMoves white time:', finalTest1);
-        console.log('Avg getPlayerLegalMoves false time:', finalTest2);
+        console.log('Avg getPlayerLegalMoves black time:', finalTest2);
     };
 </script>
 
