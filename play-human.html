@@ -13,7 +13,7 @@
 
 <body>
     <div class="back">
-        <button onclick="window.location.href='main.html'"><-</button>
+        <button onclick="window.location.href='/'"><-</button>
     </div>
 
     <main class="game-container">
@@ -95,42 +95,7 @@
             console.log('Undo move')
 
             chess.undoMove();
-
-            console.log(chess.occupied);
         });
-
-        // let epoch = 10000;
-        // let summedTest1 = 0;
-        // let summedTest2 = 0;
-
-        // const move = [ 8, 16, null ];
-
-        // const copy = chess.clone();
-
-        // for (let i = 0; i < epoch; i++) {
-        //     const startTime1 = performance.now();
-
-        //     copy.getPlayerLegalMoves(true);
-        //     // copy.MovePiece(move[0], move[1], move[2]);
-
-        //     summedTest1 += performance.now() - startTime1;
-
-        //     const startTime2 = performance.now();
-
-        //     copy.getPlayerLegalMoves(false);
-        //     // copy.undoMove();
-
-        //     summedTest2 += performance.now() - startTime2;
-        // }
-
-        // const finalTest1 = summedTest1 / epoch;
-        // const finalTest2 = summedTest2 / epoch;
-
-        // console.log('Runned tests', epoch, 'times');
-        // console.log('Avg getPlayerLegalMoves white time:', finalTest1);
-        // // console.log('Avg MovePiece time:', finalTest1);
-        // console.log('Avg getPlayerLegalMoves black time:', finalTest2);
-        // // console.log('Avg undoMove time:', finalTest2);
     };
 </script>
 

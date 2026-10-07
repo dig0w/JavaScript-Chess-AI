@@ -5,9 +5,10 @@
 
   <p align="center">
     A Chess AI and Engine that runs entirely client-side with no backend or external dependencies.
+    <br>It depends entirely on the machine it runs on, but the elo could be above 2100.
   </p>
 
-  You can test it yourself [right here](https://dig0w.github.io/JavaScript-Chess-AI/main.html).
+  You can test it yourself [right here](https://dig0w.github.io/JavaScript-Chess-AI/).
 </div>
 
 <!-- INDEX -->
@@ -18,7 +19,6 @@
       <a href="#about-the-project">About The Project</a>
     </li>
     <li><a href="#techniques-used">Techniques Used</a></li>
-    <li><a href="#possible-future-work">Possible Future Work</a></li>
     <li><a href="#contributing">Contributing</a></li>
     <li><a href="#license">License</a></li>
   </ol>
@@ -53,15 +53,6 @@ This new version, stage three, is now capable of doing evaluating roughly 11k no
 - Null-move Pruning
 - Iterative Deepening
 
-
-<p align="right">(<a href="#JavaScript-Chess-AI">back to top</a>)</p>
-
-<!-- FUTURE WORK -->
-## Possible Future Work
-
-- [ ] Game Phases
-- [ ] Static Exchange Evaluation
-- [ ] Razoring
 
 <p align="right">(<a href="#JavaScript-Chess-AI">back to top</a>)</p>
 

@@ -214,7 +214,7 @@ export class ChessRender {
     }
 
     AddToLog() {
-        const notaion = this.engine.getMoveNotation(this.engine.logs[this.engine.logs.length - 1]);
+        const notaion = this.engine.logs[this.engine.logs.length - 1].notaion;
         if (notaion == '' || !notaion) return;
 
         const li = document.createElement('li');

@@ -1,668 +1,720 @@
 import { delay } from './utils.js';
-import { ChessEngine } from './chessEngine.js';
+import {
+    ChessEngine, FLAG_EP,
+    WP, WN, WB, WR, WQ, BP, BN, BB, BR, BQ
+} from './chessEngine.js';
+
+// Evaluation tables (row 0 = rank 8, White's point of view)
+const MGPST = [
+    // PAWN
+    [ 0,  0,  0,  0,  0,  0,  0,  0,
+     50, 50, 50, 50, 50, 50, 50, 50,
+     10, 10, 20, 30, 30, 20, 10, 10,
+      5,  5, 10, 25, 25, 10,  5,  5,
+      0,  0,  0, 20, 20,  0,  0,  0,
+      5, -5,-10,  0,  0,-10, -5,  5,
+      5, 10, 10,-20,-20, 10, 10,  5,
+      0,  0,  0,  0,  0,  0,  0,  0],
+    // KNIGHT
+    [-50,-40,-30,-30,-30,-30,-40,-50,
+     -40,-20,  0,  5,  5,  0,-20,-40,
+     -30,  5, 10, 15, 15, 10,  5,-30,
+     -30,  0, 15, 20, 20, 15,  0,-30,
+     -30,  5, 15, 20, 20, 15,  5,-30,
+     -30,  0, 10, 15, 15, 10,  0,-30,
+     -40,-20,  0,  0,  0,  0,-20,-40,
+     -50,-40,-30,-30,-30,-30,-40,-50],
+    // BISHOP
+    [-20,-10,-10,-10,-10,-10,-10,-20,
+     -10,  0,  0,  0,  0,  0,  0,-10,
+     -10,  0,  5, 10, 10,  5,  0,-10,
+     -10,  5,  5, 10, 10,  5,  5,-10,
+     -10,  0, 10, 10, 10, 10,  0,-10,
+     -10, 10, 10, 10, 10, 10, 10,-10,
+     -10,  5,  0,  0,  0,  0,  5,-10,
+     -20,-10,-10,-10,-10,-10,-10,-20],
+    // ROOK
+    [0,  0,  0,  0,  0,  0,  0,  0,
+     5, 10, 10, 10, 10, 10, 10,  5,
+    -5,  0,  0,  0,  0,  0,  0, -5,
+    -5,  0,  0,  0,  0,  0,  0, -5,
+    -5,  0,  0,  0,  0,  0,  0, -5,
+    -5,  0,  0,  0,  0,  0,  0, -5,
+    -5,  0,  0,  0,  0,  0,  0, -5,
+     0,  0,  0,  5,  5,  0,  0,  0],
+    // QUEEN
+    [-20,-10,-10, -5, -5,-10,-10,-20,
+     -10,  0,  0,  0,  0,  0,  0,-10,
+     -10,  0,  5,  5,  5,  5,  0,-10,
+      -5,  0,  5,  5,  5,  5,  0, -5,
+       0,  0,  5,  5,  5,  5,  0, -5,
+     -10,  5,  5,  5,  5,  5,  0,-10,
+     -10,  0,  5,  0,  0,  0,  0,-10,
+     -20,-10,-10, -5, -5,-10,-10,-20],
+    // KING
+    [-30,-40,-40,-50,-50,-40,-40,-30,
+     -30,-40,-40,-50,-50,-40,-40,-30,
+     -30,-40,-40,-50,-50,-40,-40,-30,
+     -30,-40,-40,-50,-50,-40,-40,-30,
+     -20,-30,-30,-40,-40,-30,-30,-20,
+     -10,-20,-20,-20,-20,-20,-20,-10,
+      20, 20,  0,  0,  0,  0, 20, 20,
+      20, 30, 10,  0,  0, 10, 30, 20],
+];
+const EGPST = [
+    // PAWN
+    [ 0,  0,  0,  0,  0,  0,  0,  0,
+     10, 10, 10, 50, 50, 10, 10, 10,
+      5,  5,  5, 30, 30,  5,  5,  5,
+      0,  0,  0, 20, 20,  0,  0,  0,
+      0,  0,  0, 10, 10,  0,  0,  0,
+      5,  5,  5,  5,  5,  5,  5,  5,
+     10, 10, 10, 10, 10, 10, 10, 10,
+      0,  0,  0,  0,  0,  0,  0,  0],
+    // KNIGHT
+    [-40,-30,-20,-20,-20,-20,-30,-40,
+     -30,-10,  0,  5,  5,  0,-10,-30,
+     -20,  5, 10, 15, 15, 10,  5,-20,
+     -20,  0, 15, 20, 20, 15,  0,-20,
+     -20,  5, 15, 20, 20, 15,  5,-20,
+     -20,  0, 10, 15, 15, 10,  0,-20,
+     -30,-10,  0,  0,  0,  0,-10,-30,
+     -40,-30,-20,-20,-20,-20,-30,-40],
+    // BISHOP
+    [-20,-10,-10,-10,-10,-10,-10,-20,
+     -10,  0,  0,  0,  0,  0,  0,-10,
+     -10,  0,  5, 10, 10,  5,  0,-10,
+     -10,  0, 10, 15, 15, 10,  0,-10,
+     -10,  0, 10, 15, 15, 10,  0,-10,
+     -10,  5, 10, 10, 10, 10,  5,-10,
+     -10,  0,  0,  0,  0,  0,  0,-10,
+     -20,-10,-10,-10,-10,-10,-10,-20],
+    // ROOK
+    [ 0,  0,  0,  0,  0,  0,  0,  0,
+      5, 10, 10, 10, 10, 10, 10,  5,
+     -5,  0,  0,  0,  0,  0,  0, -5,
+     -5,  0,  0,  0,  0,  0,  0, -5,
+     -5,  0,  0,  0,  0,  0,  0, -5,
+     -5,  0,  0,  0,  0,  0,  0, -5,
+     -5,  0,  0,  0,  0,  0,  0, -5,
+      0,  0,  0,  5,  5,  0,  0,  0],
+    // QUEEN
+    [-20,-10,-10, -5, -5,-10,-10,-20,
+     -10,  0,  0,  0,  0,  0,  0,-10,
+     -10,  0,  5,  5,  5,  5,  0,-10,
+      -5,  0,  5,  5,  5,  5,  0, -5,
+      -5,  0,  5,  5,  5,  5,  0, -5,
+     -10,  5,  5,  5,  5,  5,  0,-10,
+     -10,  0,  5,  0,  0,  0,  0,-10,
+     -20,-10,-10, -5, -5,-10,-10,-20],
+    // KING
+    [-50,-40,-30,-20,-20,-30,-40,-50,
+     -40,-20,-10,  0,  0,-10,-20,-40,
+     -30,-10, 20, 30, 30, 20,-10,-30,
+     -20,  0, 30, 40, 40, 30,  0,-20,
+     -20,  0, 30, 40, 40, 30,  0,-20,
+     -30,-10, 20, 30, 30, 20,-10,-30,
+     -40,-20,-10,  0,  0,-10,-20,-40,
+     -50,-40,-30,-20,-20,-30,-40,-50],
+];
+
+const MG_VAL = [0, 100, 320, 330, 500, 900, 0];
+const EG_VAL = [0, 120, 310, 330, 510, 920, 0];
+
+// Flattened tables indexed [pieceCode * 64 + square]
+const MG_T = new Int32Array(16 * 64);
+const EG_T = new Int32Array(16 * 64);
+for (let type = 1; type <= 6; type++) {
+    for (let sq = 0; sq < 64; sq++) {
+        MG_T[type * 64 + sq] = MG_VAL[type] + MGPST[type - 1][sq ^ 56];
+        EG_T[type * 64 + sq] = EG_VAL[type] + EGPST[type - 1][sq ^ 56];
+        MG_T[(type + 8) * 64 + sq] = -(MG_VAL[type] + MGPST[type - 1][sq]);
+        EG_T[(type + 8) * 64 + sq] = -(EG_VAL[type] + EGPST[type - 1][sq]);
+    }
+}
+
+const PASSED_MG = [0, 0, 5, 10, 20, 40, 70, 0];
+const PASSED_EG = [0, 5, 12, 25, 45, 75, 120, 0];
+
+const MATE = 100000, MATE_BOUND = MATE - 256, INF = 1000000, MAX_PLY = 96;
+const PIECE_VALUE = [0, 100, 320, 330, 500, 900, 0];
+
+const wCnt = new Int8Array(10), bCnt = new Int8Array(10);
+const wMin = new Int8Array(10), bMax = new Int8Array(10);
+const wpSq = new Int8Array(16), bpSq = new Int8Array(16), wrSq = new Int8Array(16), brSq = new Int8Array(16);
+
+// Static evaluation in centipawns from the point of view of the side to move.
+export function evaluate(e) {
+    const b = e.board;
+    let mg = 0, eg = 0;
+    let nwp = 0, nbp = 0, nwr = 0, nbr = 0;
+    wCnt.fill(0); bCnt.fill(0); wMin.fill(8); bMax.fill(-1);
+
+    for (let sq = 0; sq < 64; sq++) {
+        const p = b[sq];
+        if (p === 0) continue;
+        mg += MG_T[p * 64 + sq];
+        eg += EG_T[p * 64 + sq];
+        if (p === WP) {
+            const f = (sq & 7) + 1, r = sq >> 3;
+            wCnt[f]++; if (r < wMin[f]) wMin[f] = r;
+            if (nwp < 16) wpSq[nwp++] = sq;
+        } else if (p === BP) {
+            const f = (sq & 7) + 1, r = sq >> 3;
+            bCnt[f]++; if (r > bMax[f]) bMax[f] = r;
+            if (nbp < 16) bpSq[nbp++] = sq;
+        } else if (p === WR) { if (nwr < 16) wrSq[nwr++] = sq; }
+        else if (p === BR) { if (nbr < 16) brSq[nbr++] = sq; }
+    }
+
+    // Pawn structure
+    for (let i = 0; i < nwp; i++) {
+        const sq = wpSq[i], f = (sq & 7) + 1, r = sq >> 3;
+        if (wCnt[f] > 1) { mg -= 5; eg -= 10; }                                   // doubled
+        if (wCnt[f - 1] + wCnt[f + 1] === 0) { mg -= 10; eg -= 15; }              // isolated
+        if (bMax[f - 1] <= r && bMax[f] <= r && bMax[f + 1] <= r) { mg += PASSED_MG[r]; eg += PASSED_EG[r]; }
+    }
+    for (let i = 0; i < nbp; i++) {
+        const sq = bpSq[i], f = (sq & 7) + 1, r = sq >> 3;
+        if (bCnt[f] > 1) { mg += 5; eg += 10; }
+        if (bCnt[f - 1] + bCnt[f + 1] === 0) { mg += 10; eg += 15; }
+        if (wMin[f - 1] >= r && wMin[f] >= r && wMin[f + 1] >= r) { mg -= PASSED_MG[7 - r]; eg -= PASSED_EG[7 - r]; }
+    }
+
+    // Rooks: open or semi-open files, 7th rank
+    for (let i = 0; i < nwr; i++) {
+        const sq = wrSq[i], f = (sq & 7) + 1;
+        if (wCnt[f] === 0) { if (bCnt[f] === 0) { mg += 20; eg += 10; } else { mg += 10; eg += 5; } }
+        if ((sq >> 3) === 6) { mg += 15; eg += 25; }
+    }
+    for (let i = 0; i < nbr; i++) {
+        const sq = brSq[i], f = (sq & 7) + 1;
+        if (bCnt[f] === 0) { if (wCnt[f] === 0) { mg -= 20; eg -= 10; } else { mg -= 10; eg -= 5; } }
+        if ((sq >> 3) === 1) { mg -= 15; eg -= 25; }
+    }
+
+    // Bishop pair
+    const c = e.cnt;
+    if (c[WB] >= 2) { mg += 30; eg += 50; }
+    if (c[BB] >= 2) { mg -= 30; eg -= 50; }
+
+    // King safety: pawn shield, castled king (midgame only)
+    const wk = e.kingSq[0], bk = e.kingSq[1];
+    if (wk >= 0 && (wk >> 3) <= 1) {
+        const f = wk & 7, r = wk >> 3;
+        for (let ff = Math.max(0, f - 1); ff <= Math.min(7, f + 1); ff++) {
+            if (b[(r + 1) * 8 + ff] === WP) mg += 10;
+            else if (r + 2 < 8 && b[(r + 2) * 8 + ff] === WP) mg += 5;
+        }
+    }
+    if (bk >= 0 && (bk >> 3) >= 6) {
+        const f = bk & 7, r = bk >> 3;
+        for (let ff = Math.max(0, f - 1); ff <= Math.min(7, f + 1); ff++) {
+            if (b[(r - 1) * 8 + ff] === BP) mg -= 10;
+            else if (r - 2 >= 0 && b[(r - 2) * 8 + ff] === BP) mg -= 5;
+        }
+    }
+
+    // Taper
+    let phase = c[WN] + c[BN] + c[WB] + c[BB] + 2 * (c[WR] + c[BR]) + 4 * (c[WQ] + c[BQ]);
+    if (phase > 24) phase = 24;
+    const score = ((mg * phase + eg * (24 - phase)) / 24) | 0;
+    return (e.turn === 0 ? score : -score) + 10;        // +10: tempo
+}
+
+// late-move-reduction table
+const LMR = Array.from({ length: 64 }, (_, d) => Int8Array.from({ length: 64 }, (_, m) => (d < 3 || m < 2) ? 0 : Math.floor(0.75 + Math.log(d) * Math.log(m) / 2.25)));
+
+const TT_DEFAULT_BITS = 20;
+const TT_EXACT = 1, TT_LOWER = 2, TT_UPPER = 3;
 
 export class ChessAI {
     constructor(engine = null, playsWhite = false, timeLimit = 2000) {
         this.engine = engine;
         this.playsWhite = playsWhite;
-
-        if (playsWhite) engine.whiteAI = this;
-        else engine.blackAI = this;
-
         this.timeLimit = timeLimit;
+        this.verbose = true;
 
-        this.INFINITY = 1000000;
+        if (engine) {
+            if (playsWhite) engine.whiteAI = this;
+            else engine.blackAI = this;
+        }
 
-        this.piecesIndexes = {
-            P: 0, N: 1, B: 2, R: 3, Q: 4, K: 5,
-            p: 0, n: 1, b: 2, r: 3, q: 4, k: 5
-        };
+        this.INFINITY = INF;
 
-        this.mgValues = [100, 320, 330, 500, 900, 20000];
-        this.egValues = [120, 310, 330, 510, 920, 20000];
+        this.resizeHash(TT_DEFAULT_BITS);
 
-        this.phaseWeights = [0, 10, 10, 20, 40, 0];
-        this.maxPhase = 256;
-
-        this.mgPst = [
-            [
-                [ 0, 0, 0, 0, 0, 0, 0, 0 ],
-                [ 5, 10, 10, -20, -20, 10, 10, 5 ]
-                [ 5, -5, -10, 0, 0, -10, -5, 5 ],
-                [ 0, 0, 0, 20, 20, 0, 0, 0 ],
-                [ 5, 5, 10, 25, 25, 10, 5, 5 ],
-                [ 10, 10, 20, 30, 30, 20, 10, 10 ],
-                [ 50, 50, 50, 50, 50, 50, 50, 50 ],
-                [ 0, 0, 0, 0, 0, 0, 0, 0 ]
-            ],
-            [
-                [ -50,-40,-30,-30,-30,-30,-40,-50 ],
-                [ -40,-20, 0, 5, 5, 0,-20,-40 ],
-                [ -30, 5,10,15,15,10, 5,-30 ],
-                [ -30, 0,15,20,20,15, 0,-30 ],
-                [ -30, 5,15,20,20,15, 5,-30 ],
-                [ -30, 0,10,15,15,10, 0,-30 ],
-                [ -40,-20, 0, 0, 0, 0,-20,-40 ],
-                [ -50,-40,-30,-30,-30,-30,-40,-50 ]
-            ],
-            [
-                [ -20,-10,-10,-10,-10,-10,-10,-20 ],
-                [ -10, 0, 0, 0, 0, 0, 0,-10 ],
-                [ -10, 0, 5,10,10, 5, 0,-10 ],
-                [ -10, 5, 5,10,10, 5, 5,-10 ],
-                [ -10, 0,10,10,10,10, 0,-10 ],
-                [ -10,10,10,10,10,10,10,-10 ],
-                [ -10, 5, 0, 0, 0, 0, 5,-10 ],
-                [ -20,-10,-10,-10,-10,-10,-10,-20 ]
-            ],
-            [
-                [ 0,0,0,0,0,0,0,0 ],
-                [ 5,10,10,10,10,10,10,5 ],
-                [ -5,0,0,0,0,0,0,-5 ],
-                [ -5,0,0,0,0,0,0,-5 ],
-                [ -5,0,0,0,0,0,0,-5 ],
-                [ -5,0,0,0,0,0,0,-5 ],
-                [ -5,0,0,0,0,0,0,-5 ],
-                [ 0,0,0,5,5,0,0,0 ]
-            ],
-            [
-                [ -20,-10,-10,-5,-5,-10,-10,-20 ],
-                [ -10,0,0,0,0,0,0,-10 ],
-                [ -10,0,5,5,5,5,0,-10 ],
-                [ -5,0,5,5,5,5,0,-5 ],
-                [ 0,0,5,5,5,5,0,-5 ],
-                [ -10,5,5,5,5,5,0,-10 ],
-                [ -10,0,5,0,0,0,0,-10 ],
-                [ -20,-10,-10,-5,-5,-10,-10,-20 ]
-            ],
-            [
-                [ -30,-40,-40,-50,-50,-40,-40,-30 ],
-                [ -30,-40,-40,-50,-50,-40,-40,-30 ],
-                [ -30,-40,-40,-50,-50,-40,-40,-30 ],
-                [ -30,-40,-40,-50,-50,-40,-40,-30 ],
-                [ -20,-30,-30,-40,-40,-30,-30,-20 ],
-                [ -10,-20,-20,-20,-20,-20,-20,-10 ],
-                [ 20, 20, 0, 0, 0, 0, 20, 20 ],
-                [ 20, 30, 10, 0, 0, 10, 30, 20 ]
-            ]
-        ];
-        this.egPst = [
-            [
-                [ 0, 0, 0, 0, 0, 0, 0, 0 ],
-                [ 10, 10, 10, 10, 10, 10, 10, 10 ],
-                [ 5, 5, 5, 5, 5, 5, 5, 5 ],
-                [ 0, 0, 0, 10, 10, 0, 0, 0 ],
-                [ 0, 0, 0, 20, 20, 0, 0, 0 ],
-                [ 5, 5, 5, 30, 30, 5, 5, 5 ],
-                [ 10, 10, 10, 50, 50, 10, 10, 10 ],
-                [ 0, 0, 0, 0, 0, 0, 0, 0 ]
-            ],
-            [
-                [ -40,-30,-20,-20,-20,-20,-30,-40 ],
-                [ -30,-10, 0, 5, 5, 0,-10,-30 ],
-                [ -20, 5,10,15,15,10, 5,-20 ],
-                [ -20, 0,15,20,20,15, 0,-20 ],
-                [ -20, 5,15,20,20,15, 5,-20 ],
-                [ -20, 0,10,15,15,10, 0,-20 ],
-                [ -30,-10, 0, 0, 0, 0,-10,-30 ],
-                [ -40,-30,-20,-20,-20,-20,-30,-40 ]
-            ],
-            [
-                [ -20,-10,-10,-10,-10,-10,-10,-20 ],
-                [ -10, 0, 0, 0, 0, 0, 0,-10 ],
-                [ -10, 0, 5,10,10, 5, 0,-10 ],
-                [ -10, 0,10,15,15,10, 0,-10 ],
-                [ -10, 0,10,15,15,10, 0,-10 ],
-                [ -10, 5,10,10,10,10, 5,-10 ],
-                [ -10, 0, 0, 0, 0, 0, 0,-10 ],
-                [ -20,-10,-10,-10,-10,-10,-10,-20 ]
-            ],
-            [
-                [ 0,0,0,5,5,0,0,0 ],
-                [ -5,0,0,0,0,0,0,-5 ],
-                [ -5,0,0,0,0,0,0,-5 ],
-                [ -5,0,0,0,0,0,0,-5 ],
-                [ -5,0,0,0,0,0,0,-5 ],
-                [ -5,0,0,0,0,0,0,-5 ],
-                [ 5,10,10,10,10,10,10,5 ],
-                [ 0,0,0,0,0,0,0,0 ]
-            ],
-            [
-                [ -20,-10,-10,-5,-5,-10,-10,-20 ],
-                [ -10,0,0,0,0,0,0,-10 ],
-                [ -10,0,5,5,5,5,0,-10 ],
-                [ -5,0,5,5,5,5,0,-5 ],
-                [ -5,0,5,5,5,5,0,-5 ],
-                [ -10,5,5,5,5,5,0,-10 ],
-                [ -10,0,5,0,0,0,0,-10 ],
-                [ -20,-10,-10,-5,-5,-10,-10,-20 ]
-            ],
-            [
-                [ -50,-40,-30,-20,-20,-30,-40,-50 ],
-                [ -40,-20,-10,0,0,-10,-20,-40 ],
-                [ -30,-10,20,30,30,20,-10,-30 ],
-                [ -20,0,30,40,40,30,0,-20 ],
-                [ -20,0,30,40,40,30,0,-20 ],
-                [ -30,-10,20,30,30,20,-10,-30 ],
-                [ -40,-20,-10,0,0,-10,-20,-40 ],
-                [ -50,-40,-30,-20,-20,-30,-40,-50 ]
-            ]
-        ];
-
-        this.killerMoves = {};
-        this.history = Array.from({ length: engine.rows * engine.cols }, () => new Array(engine.rows * engine.cols).fill(0));
-        this.TT = new Map();
-
-        this.MVV_LVA = [
-            [15, 14, 13, 12, 11, 10],
-            [25, 24, 23, 22, 21, 20],
-            [35, 34, 33, 32, 31, 30],
-            [45, 44, 43, 42, 41, 40],
-            [55, 54, 53, 52, 51, 50],
-            [65, 64, 63, 62, 61, 60]
-        ];
+        this.killers = new Int32Array(MAX_PLY * 2 + 4);
+        this.history = new Int32Array(2 * 64 * 64);
+        this.moveLists = Array.from({ length: MAX_PLY + 4 }, () => new Int32Array(256));
+        this.scoreLists = Array.from({ length: MAX_PLY + 4 }, () => new Int32Array(256));
+        this.quietLists = Array.from({ length: MAX_PLY + 4 }, () => new Int32Array(64));
 
         this.nodes = 0;
         this.nodesMove = 0;
         this.totalNodes = 0;
-
-        this.moves = 0;
-        this.totalMoves = 0;
-
-        this.genMoves = 0;
-        this.totalGenMoves = 0;
+        this.stopped = false;
+        this.deadline = 0;
+        this.rootSp = 0;
+        this.rootMoves = [];
+        this.iterBest = 0;
+        this.lastInfo = null;
     }
 
-    async Play() {
-        await delay(500);
+    // Allocate the transposition table with 2^bits entries
+    resizeHash(bits) {
+        bits = Math.max(10, Math.min(26, bits | 0));
+        const size = 1 << bits;
+        this.ttBits = bits;
+        this.ttMask = size - 1;
+        this.ttLo = new Int32Array(size);
+        this.ttHi = new Int32Array(size);
+        this.ttMove = new Int32Array(size);
+        this.ttScore = new Int32Array(size);
+        this.ttDepth = new Int8Array(size);
+        this.ttFlag = new Uint8Array(size);
+        this.ttAge = new Uint8Array(size);
+        this.age = 0;
+    }
 
-        const startTime = new Date;
+    setHashMB(mb) {
+        const entries = (mb * 1024 * 1024) / 19;
+        this.resizeHash(Math.floor(Math.log2(Math.max(1024, entries))));
+    }
+
+    // Permille of the table used by the current search
+    hashfull() {
+        const n = Math.min(1000, this.ttMask + 1);
+        let used = 0;
+        for (let i = 0; i < n; i++) if (this.ttFlag[i] !== 0 && this.ttAge[i] === this.age) used++;
+        return Math.round(used * 1000 / n);
+    }
+
+    clearHash() {
+        this.ttFlag.fill(0);
+        this.age = 0;
+        this.history.fill(0);
+        this.killers.fill(0);
+    }
+
+
+    async Play() {
+        await delay(250);
 
         const isWhiteTurn = this.engine.turn === 0;
         if (isWhiteTurn !== this.playsWhite) return;
-        
-        console.log("AI (" + (this.playsWhite ? "White" : "Black") + ") playing...");
+        if (this.engine.gameCondition !== 'PLAYING') return;
 
-        this.nodes = 0;
-        this.nodesMove = 0;
-        this.moves = 0;
-        this.genMoves = 0;
-
+        const start = performance.now();
         const best = this.bestMove();
-            if (!best) return;
+        if (!best) return;
 
-        this.totalNodes += this.nodes;
-        this.totalMoves += this.moves;
-        this.totalGenMoves += this.genMoves;
+        if (this.verbose) {
+            console.log(`AI (${this.playsWhite ? 'White' : 'Black'}) nodes: ${this.nodesMove}, total: ${this.totalNodes}, time: ${(performance.now() - start).toFixed(0)}ms`);
+        }
 
-        console.log('Nodes searched:', this.nodesMove, 'Total nodes: ', this.totalNodes);
-        console.log('Moves made:', this.moves, 'Total moves: ', this.totalMoves);
-        console.log('Gen Moves made:', this.genMoves, 'Total gen moves: ', this.totalGenMoves);
-        console.log('Move time:', new Date - startTime);
-
-        // Execute move on real engine
+        // the position may have changed while we were thinking (undo / restart)
+        if ((this.engine.turn === 0) !== this.playsWhite || this.engine.gameCondition !== 'PLAYING') return;
         this.engine.MovePiece(best[0], best[1], best[2]);
     }
 
-    bestMove(timeLimit = this.timeLimit, maxDepth = 100) {
-        const startTime = Date.now();
-        const deadline = startTime + timeLimit;
+    /**
+     * Returns the best move as [fromSq, toSq, promotionChar | null], or null if there is no legal move.
+     *
+     * opts (all optional):
+     *   soft        target time in ms; no new iteration is started after ~55% of it (default: timeLimit)
+     *   infinite    ignore the clock completely (stop with the stop flag / depth / nodes)
+     *   nodes       stop after this many nodes
+     *   stopFlag    Int32Array (usually on a SharedArrayBuffer); the search stops when element 0 becomes non-zero
+     *   searchMoves array of UCI move strings to restrict the root moves
+     *   onInfo      callback({depth, score, mate, nodes, ms, nps, hashfull, pv:[uci...]}) after every completed depth
+     *   analyse     do not short-cut when there is only one legal move
+     * After the call: this.lastPV (array of UCI strings), this.lastInfo.
+     */
+    bestMove(timeLimit = this.timeLimit, maxDepth = 64, opts = {}) {
+        const e = this.engine.clone();
+        if (e.gameCondition !== 'PLAYING') return null;
 
-        this.nodesMove = 0;
-
-        const copy = this.engine.clone();
-
-        const moves = copy.getPlayerLegalMoves(copy.turn === 0);
-        this.genMoves++;
-        if (moves.length == 0) return null;
-
-        if (moves.length == 1) return moves[0];
-
-        let globalBestMove = null;
-        let globalBestScore = -this.INFINITY;
-
-        // Move ordering
-        moves.sort((a, b) => this.moveOrdering(copy, b) - this.moveOrdering(copy, a));
-
-        for (let d = 1; d <= maxDepth; d++) {
-            if (Date.now() > deadline) break;
-
-            const startDepth = performance.now();
-
-            if (globalBestMove) {
-                const idx = moves.findIndex(m => m[0] === globalBestMove[0] && m[1] === globalBestMove[1] && m[2] === globalBestMove[2]);
-                if (idx > 0) moves.unshift(moves.splice(idx, 1)[0]);
-            }
-
-            let alpha = -this.INFINITY;
-            let beta = this.INFINITY;
-
-            let bestMoveDepth = null;
-            let bestScoreDepth = -this.INFINITY;
-
-            let timedOut = false;
-
-            for (let i = 0; i < moves.length; i++) {
-                if (Date.now() > deadline) {
-                    timedOut = true;
-                    break;
-                }
-
-                const move = moves[i];
-                const moved = copy.MovePiece(move[0], move[1], move[2]);
-                if (!moved) continue;
-                this.moves++;
-
-                let score;
-                if (i === 0) {
-                    // Full-window for the first move
-                    score = -this.minimax(copy, d - 1, -beta, -alpha);
-                } else {
-                    // Narrow-window (PVS)
-                    score = -this.minimax(copy, d - 1, -alpha - 1, -alpha);
-                    if (score > alpha) {
-                        // Research with full window
-                        score = -this.minimax(copy, d - 1, -beta, -alpha);
-                    }
-                }
-
-                copy.undoMove();
-
-                if (score > bestScoreDepth || !bestMoveDepth) {
-                    bestScoreDepth = score;
-                    bestMoveDepth = move;
-                }
-
-                if (score > alpha) {
-                    alpha = score;
-                }
-            }
-
-            if (timedOut) break;
-
-            globalBestMove = bestMoveDepth;
-            globalBestScore = bestScoreDepth;
-
-            const time = performance.now() - startDepth;
-            console.log('info depth', d, 'nodes', this.nodes, 'time', time.toFixed(0), 'nps', ((this.nodes / time) * 1000).toFixed(0), 'pv', copy.getMoveUCI(globalBestMove), 'score cp', globalBestScore.toFixed(0));
-
-            this.nodesMove += this.nodes;
-            this.nodes = 0;
+        let rootMoves = e.legalMoveInts();
+        if (opts.searchMoves && opts.searchMoves.length) {
+            const wanted = new Set(opts.searchMoves);
+            const filtered = rootMoves.filter(m => wanted.has(e.moveToUCI(m)));
+            if (filtered.length) rootMoves = filtered;
+        }
+        this.lastPV = [];
+        if (rootMoves.length === 0) return null;
+        if (rootMoves.length === 1 && !opts.analyse && !opts.infinite) {
+            this.lastPV = [e.moveToUCI(rootMoves[0])];
+            this.lastInfo = { score: 0, nodes: 0, ms: 0, nps: 0 };
+            return e._arr(rootMoves[0]);
         }
 
-        return globalBestMove;
-    }
+        const infinite = !!opts.infinite;
+        const soft = infinite ? Infinity : (opts.soft ?? timeLimit);
+        this.stopFlag = opts.stopFlag || null;
+        this.nodeLimit = opts.nodes || 0;
 
-    minimax(engineState, depth, alpha, beta, allowNull = true) {
-        this.nodes++;
+        this.age = (this.age + 1) & 255;
+        for (let i = 0; i < this.history.length; i++) this.history[i] >>= 1;
+        this.killers.fill(0);
 
-        // Check TT
-        const alphaOrig = alpha;
-        const key = engineState.zobrist.hash;
+        const start = performance.now();
+        this.deadline = infinite ? Infinity : start + timeLimit;
+        this.stopped = false;
+        this.nodes = 0;
+        this.rootSp = e.sp;
 
-        const ttEntry = this.TT.get(key);
-        if (ttEntry && ttEntry.depth >= depth) {
-            if (ttEntry.flag === 'EXACT') return ttEntry.value;
-            if (ttEntry.flag === 'LOWERBOUND') alpha = Math.max(alpha, ttEntry.value);
-            if (ttEntry.flag === 'UPPERBOUND') beta = Math.min(beta, ttEntry.value);
-            if (alpha >= beta) return ttEntry.value;
-        }
+        // initial ordering: TT move first, then captures/promotions by MVV-LVA
+        const ttm = this.probeMove(e);
+        const scores = new Map();
+        const tmpList = this.moveLists[0], tmpScores = this.scoreLists[0];
+        for (let i = 0; i < rootMoves.length; i++) tmpList[i] = rootMoves[i];
+        this.scoreMoves(e, tmpList, rootMoves.length, tmpScores, 0, ttm, false);
+        rootMoves.forEach((m, i) => scores.set(m, tmpScores[i]));
+        rootMoves.sort((a, b) => scores.get(b) - scores.get(a));
+        this.rootMoves = rootMoves;
 
-        const inCheck = engineState.isKingInCheck(engineState.turn === 0);
+        let best = rootMoves[0], bestScore = 0;
 
-        // Terminal condition
-        if (depth === 0 || engineState.gameCondition !== 'PLAYING') {
-            return this.quiescence(engineState, alpha, beta, 0);
-        }
+        for (let depth = 1; depth <= maxDepth; depth++) {
+            if (depth > 1 && performance.now() - start > soft * 0.55) break;
 
-        // Null Move Prune
-        if (allowNull && depth >= 3 && !inCheck && engineState.hasNonPawnMaterial(engineState.turn)) {
-            const R = Math.min(depth - 1, depth >= 6 ? 3 : 2);
-            if (R > 0) {
-                const prevEp = engineState.enPassantSquare;
-                const prevHash = engineState.zobrist.hash;
-
-                engineState.makeNullMove();
-
-                const score = -this.minimax(engineState, depth - 1 - R, -beta, -beta + 1, false);
-
-                engineState.undoNullMove(prevEp, prevHash);
-
-                if (score >= beta) return beta; // fail-high
-            }
-        }
-
-        // Futility Prune
-        let futilityPrune = false;
-        if (depth === 1 && !inCheck) {
-            const standPat = this.evaluate(engineState);
-            // If eval is so bad that even a quiet move can't raise alpha
-            if (standPat + 150 <= alpha) {
-                futilityPrune = true;
-            }
-        }
-
-        let moves = engineState.getPlayerLegalMoves(engineState.turn === 0);
-        this.genMoves++;
-            if (moves.length === 0) return this.quiescence(engineState, alpha, beta, 0);
-
-        // Order moves
-        moves.sort((a, b) => this.moveOrdering(engineState, b, depth) - this.moveOrdering(engineState, a, depth));
-
-        let best = -this.INFINITY;
-        let bestMove = null;
-
-        let moveIndex = 0;
-
-        for (const move of moves) {
-            moveIndex++;
-
-            const isCapture = !engineState.isEmpty(move[1]);
-            const isPromotion = !!move[2];
-
-            // Futility prune
-            if (futilityPrune && !isCapture && !isPromotion) continue; // prune quiet move
-
-            const moved = engineState.MovePiece(move[0], move[1], move[2]);
-            if (!moved) continue;
-            this.moves++;
+            let alpha = -INF, beta = INF, delta = 30;
+            if (depth >= 5) { alpha = bestScore - delta; beta = bestScore + delta; }
 
             let score;
-
-            const isKiller = this.killerMoves[depth]?.some(k => k[0] === move[0] && k[1] === move[1] && k[2] === move[2]);
-
-            // Late Move Reduction
-            if (depth >= 3 && moveIndex >= 4 && !isCapture && !isPromotion && !inCheck && !isKiller) {
-                // Reduced search
-                score = -this.minimax(engineState, depth - 2, -alpha - 1, -alpha);
-
-                // Re-search if it improved alpha
-                if (score > alpha) {
-                    score = -this.minimax(engineState, depth - 1, -beta, -alpha);
-                }
-            } else {
-                // Negamax
-                score = -this.minimax(engineState, depth - 1, -beta, -alpha);
+            for (; ;) {
+                this.iterBest = 0;
+                score = this.searchRoot(e, depth, alpha, beta);
+                if (this.stopped) break;
+                if (score <= alpha) { beta = (alpha + beta) >> 1; alpha = Math.max(score - delta, -INF); delta *= 2; }
+                else if (score >= beta) { beta = Math.min(score + delta, INF); delta *= 2; }
+                else break;
             }
 
-            engineState.undoMove();
+            if (this.stopped) {
+                // a partially searched iteration still counts if it already found an improvement
+                if (this.iterBest) best = this.iterBest;
+                break;
+            }
+
+            best = this.rootMoves[0];
+            bestScore = score;
+
+            const ms = performance.now() - start;
+            this.lastPV = this.extractPV(e, best, depth);
+            if (opts.onInfo) {
+                const isMate = Math.abs(score) >= MATE_BOUND;
+                opts.onInfo({
+                    depth, score, nodes: this.nodes, ms, nps: Math.round(this.nodes / Math.max(ms, 1) * 1000),
+                    mate: isMate ? Math.sign(score) * ((MATE - Math.abs(score) + 1) >> 1) : null,
+                    hashfull: this.hashfull(), pv: this.lastPV
+                });
+            } else if (this.verbose) {
+                console.log('info depth', depth, 'nodes', this.nodes, 'time', ms.toFixed(0), 'nps', Math.round(this.nodes / Math.max(ms, 1) * 1000), 'pv', this.lastPV.join(' '), 'score cp', score);
+            }
+            if (Math.abs(score) >= MATE_BOUND && depth >= (MATE - Math.abs(score)) + 2) break;   // forced mate found
+        }
+
+        const elapsed = performance.now() - start;
+        this.nodesMove = this.nodes;
+        this.totalNodes += this.nodes;
+        this.lastInfo = { score: bestScore, nodes: this.nodes, ms: elapsed, nps: this.nodes / Math.max(elapsed, 1) * 1000 };
+        if (this.lastPV.length === 0 || this.lastPV[0] !== e.moveToUCI(best)) this.lastPV = [e.moveToUCI(best)];
+        this.stopFlag = null;
+        return e._arr(best);
+    }
+
+    // Principal variation: the best move followed by the transposition-table line
+    extractPV(e, first, maxLen) {
+        const pv = [e.moveToUCI(first)];
+        let made = 0;
+        e.makeMove(first); made++;
+        const list = new Int32Array(256);
+        for (let i = 1; i < Math.max(maxLen, 2) && i < 24; i++) {
+            const tm = this.probeMove(e);
+            if (!tm) break;
+            const n = e.genMoves(list);
+            let found = false;
+            for (let j = 0; j < n; j++) if (list[j] === tm) { found = true; break; }
+            if (!found || !e.makeMove(tm)) break;
+            made++;
+            pv.push(e.moveToUCI(tm));
+            if (e.repetitions() > 1) break;
+        }
+        while (made-- > 0) e.unmakeMove();
+        return pv;
+    }
+
+    checkTime() {
+        if (performance.now() >= this.deadline) this.stopped = true;
+        else if (this.nodeLimit && this.nodes >= this.nodeLimit) this.stopped = true;
+        else if (this.stopFlag && Atomics.load(this.stopFlag, 0) !== 0) this.stopped = true;
+    }
+
+    probeMove(e) {
+        const idx = e.hashLo & this.ttMask;
+        if (this.ttFlag[idx] && this.ttLo[idx] === e.hashLo && this.ttHi[idx] === e.hashHi) return this.ttMove[idx];
+        return 0;
+    }
+
+    searchRoot(e, depth, alpha, beta) {
+        const moves = this.rootMoves;
+        const origAlpha = alpha;
+        let best = -INF, bestMove = 0;
+
+        for (let i = 0; i < moves.length; i++) {
+            const m = moves[i];
+            e.makeMove(m);
+            let score;
+            if (i === 0) score = -this.negamax(e, depth - 1, -beta, -alpha, 1, true);
+            else {
+                score = -this.negamax(e, depth - 1, -alpha - 1, -alpha, 1, true);
+                if (score > alpha && score < beta) score = -this.negamax(e, depth - 1, -beta, -alpha, 1, true);
+            }
+            e.unmakeMove();
+            if (this.stopped) return 0;
 
             if (score > best) {
-                best = score;
-                bestMove = move;
-            }
-            if (score > alpha) {
-                alpha = score;
-            }
-
-            // Cutoff
-            if (alpha >= beta) {
-                // Store killer move
-                if (!this.killerMoves[depth]) this.killerMoves[depth] = [];
-                const km = this.killerMoves[depth];
-                if (!km.some(k => k[0] === move[0] && k[1] === move[1] && k[2] === move[2])) {
-                    km.unshift([ move[0], move[1], move[2] ]);
-                    if (km.length > 2) km.pop();
-                }
-
-                // Store History
-                const isCapture = !engineState.isEmpty(move[1]);
-                if (!isCapture && !isPromotion) this.history[move[0]][move[1]] += depth * depth;
-
-                break;
+                best = score; bestMove = m;
+                if (score > origAlpha) this.iterBest = m;
+                if (score > alpha) alpha = score;
+                if (score >= beta) break;
             }
         }
 
-        // Store in TT
-        let flag = 'EXACT';
-        if (best <= alphaOrig) flag = 'UPPERBOUND';
-        else if (best >= beta) flag = 'LOWERBOUND';
-        this.TT.set(key, { value: best, depth, flag, bestMove });
-
-        if (best == -this.INFINITY) return this.quiescence(engineState, alpha, beta, 0);
-
+        // keep the best move first for the next iteration
+        const idx = moves.indexOf(bestMove);
+        if (idx > 0) { moves.splice(idx, 1); moves.unshift(bestMove); }
         return best;
     }
 
-    moveOrdering(engineState, move, depthKey = -1) {
-        // 1. Transposition Table
-        const ttEntry = this.TT.get(engineState.zobrist.hash);
-        if (ttEntry && ttEntry.bestMove && ttEntry.bestMove[0] === move[0] && ttEntry.bestMove[1] === move[1] && ttEntry.bestMove[2] === move[2]) {
-            return 1000000;
-        }
-        
-        let score = 0;
-
-        const moving = engineState.getPieceSq(move[0]);
-        const target = engineState.getPieceSq(move[1]);
-
-        // 2. MVV-LVA for captures
-        if (!engineState.isEmpty(move[1])) {
-            score += this.MVV_LVA[this.piecesIndexes[target]][this.piecesIndexes[moving]] || 0;
-        }
-
-        // 3. Promotions
-        if (move[2]) score += 8000;
-
-        // 4. Checks
-        if (!engineState.moveKeepsKingSafe(move[0], move[1], true)) score += 100;
-
-        // 5. Killer move heuristic
-        const km = this.killerMoves[depthKey];
-        if (km) {
-            for (let i = 0; i < km.length; i++) {
-                const k = km[i];
-                if (k[0] === move[0] && k[1] === move[1] && k[2] === move[2]) {
-                    score += (i === 0) ? 750 : 500;
-                }
+    isRepetition(e) {
+        const lo = e.hashLo, hi = e.hashHi;
+        const stop = Math.max(0, e.sp - e.halfmoveClock);
+        let earlier = 0;
+        for (let j = e.sp - 2; j >= stop; j -= 2) {
+            if (e.posLo[j] === lo && e.posHi[j] === hi) {
+                if (j >= this.rootSp) return true;          // repeated inside the search tree: treat as a draw
+                if (++earlier >= 2) return true;            // third occurrence including the game history
             }
         }
-
-        // 6. History heuristic
-        if (engineState.isEmpty(move[1]) && !move[2]) score += this.history[move[0]][move[1]];
-
-        return score;
+        return false;
     }
 
-    quiescence(engineState, alpha, beta, qDepth = 0) {
-        this.nodes++;
-        if (engineState.gameCondition !== 'PLAYING') return this.evaluate(engineState);
+    negamax(e, depth, alpha, beta, ply, allowNull) {
+        if ((++this.nodes & 2047) === 0) this.checkTime();
+        if (this.stopped) return 0;
 
-        const inCheck = engineState.isKingInCheck(engineState.turn === 0);
+        const pv = beta - alpha > 1;
 
-        let standPat = 0;
-        if (!inCheck) {
-            standPat = this.evaluate(engineState);
-            if (standPat >= beta) return beta;
-            if (alpha < standPat) alpha = standPat;
+        if (ply > 0) {
+            if (e.halfmoveClock >= 100 || this.isRepetition(e) || e.isInsufficientMaterial()) return 0;
+            // mate-distance pruning
+            if (alpha < -MATE + ply) alpha = -MATE + ply;
+            if (beta > MATE - ply - 1) beta = MATE - ply - 1;
+            if (alpha >= beta) return alpha;
+        }
+        if (ply >= MAX_PLY) return evaluate(e);
+
+        const inCheck = e.inCheck();
+        if (inCheck) depth++; // check extension
+        if (depth <= 0) return this.quiescence(e, alpha, beta, ply, 0);
+
+        // Transposition table
+        const idx = e.hashLo & this.ttMask;
+        let ttMove = 0;
+        if (this.ttFlag[idx] !== 0 && this.ttLo[idx] === e.hashLo && this.ttHi[idx] === e.hashHi) {
+            ttMove = this.ttMove[idx];
+            if (!pv && this.ttDepth[idx] >= depth) {
+                let s = this.ttScore[idx];
+                if (s >= MATE_BOUND) s -= ply; else if (s <= -MATE_BOUND) s += ply;
+                const flag = this.ttFlag[idx];
+                if (flag === TT_EXACT) return s;
+                if (flag === TT_LOWER && s >= beta) return s;
+                if (flag === TT_UPPER && s <= alpha) return s;
+            }
         }
 
-        // Only captures or promotions
-        let moves = engineState.getPlayerLegalMoves(engineState.turn === 0);
-        this.genMoves++;
+        const staticEval = inCheck ? -INF : evaluate(e);
 
-        if (!inCheck) {
-            moves = moves.filter(m => !engineState.isEmpty(m[1]) || m[2]);
+        if (!pv && !inCheck) {
+            // reverse futility ("static null move") pruning
+            if (depth <= 4 && staticEval - 100 * depth >= beta && beta > -MATE_BOUND && staticEval < MATE_BOUND) return staticEval;
+
+            // null-move pruning
+            if (allowNull && depth >= 3 && staticEval >= beta && e.hasNonPawnMaterial(e.turn === 0)) {
+                const R = 2 + (depth >= 6 ? 1 : 0);
+                e.makeNullMove();
+                const s = -this.negamax(e, depth - 1 - R, -beta, -beta + 1, ply + 1, false);
+                e.undoNullMove();
+                if (this.stopped) return 0;
+                if (s >= beta) return s >= MATE_BOUND ? beta : s;
+            }
         }
 
-        if (inCheck && moves.length === 0) {
-            return -1000000 + qDepth; 
-        }
+        // Generate and order moves
+        const list = this.moveLists[ply], scores = this.scoreLists[ply];
+        const n = e.genMoves(list);
+        this.scoreMoves(e, list, n, scores, ply, ttMove, false);
 
-        // Move ordering
-        moves.sort((a, b) => this.moveOrdering(engineState, b) - this.moveOrdering(engineState, a));
+        const origAlpha = alpha;
+        const us = e.turn;
+        const quiets = this.quietLists[ply];
+        let nQuiets = 0, legal = 0, best = -INF, bestMove = 0;
+        const k1 = this.killers[ply * 2], k2 = this.killers[ply * 2 + 1];
 
-        for (const move of moves) {
-            // Delta Prune
-            if (engineState.isEmpty(move[1]) === false) {
-                const target = engineState.getPieceSq(move[1]);
-                const victimValue = this.mgValues[this.piecesIndexes[target]] || 0;
-                const deltaMargin = 100; // small safety buffer
+        for (let i = 0; i < n; i++) {
+            // selection sort: take the best remaining move
+            let bi = i, bs = scores[i];
+            for (let j = i + 1; j < n; j++) if (scores[j] > bs) { bs = scores[j]; bi = j; }
+            const m = list[bi];
+            list[bi] = list[i]; scores[bi] = scores[i]; list[i] = m; scores[i] = bs;
 
-                // If even the best-case gain can't reach alpha -> prune
-                if (standPat + victimValue + deltaMargin < alpha) {
-                    continue;
+            const isCapture = e.board[(m >> 6) & 63] !== 0 || ((m >> 15) & 7) === FLAG_EP;
+            const isPromo = ((m >> 12) & 7) !== 0;
+            const quiet = !isCapture && !isPromo;
+
+            if (!e.makeMove(m)) continue;
+            legal++;
+            const gives = e.inCheck();
+
+            // forward pruning of late quiet moves (never the first legal move)
+            if (legal > 1 && quiet && !pv && !inCheck && !gives && best > -MATE_BOUND) {
+                if (depth <= 3 && legal >= 5 + depth * depth) { e.unmakeMove(); continue; }                 // late-move pruning
+                if (depth <= 2 && staticEval + 100 + 90 * depth <= alpha) { e.unmakeMove(); continue; }     // futility pruning
+            }
+
+            const newDepth = depth - 1;
+            let score;
+            if (legal === 1) {
+                score = -this.negamax(e, newDepth, -beta, -alpha, ply + 1, true);
+            } else {
+                let r = 0;
+                if (depth >= 3 && quiet && !inCheck && !gives && legal >= 4) {
+                    r = LMR[depth > 63 ? 63 : depth][legal > 63 ? 63 : legal];
+                    if (pv) r--;
+                    if (m === k1 || m === k2) r--;
+                    if (r < 0) r = 0;
+                    if (r > newDepth - 1) r = newDepth - 1 > 0 ? newDepth - 1 : 0;
+                }
+                score = -this.negamax(e, newDepth - r, -alpha - 1, -alpha, ply + 1, true);
+                if (score > alpha && r > 0) score = -this.negamax(e, newDepth, -alpha - 1, -alpha, ply + 1, true);
+                if (score > alpha && score < beta) score = -this.negamax(e, newDepth, -beta, -alpha, ply + 1, true);
+            }
+            e.unmakeMove();
+            if (this.stopped) return 0;
+
+            if (quiet && nQuiets < 64) quiets[nQuiets++] = m;
+
+            if (score > best) {
+                best = score; bestMove = m;
+                if (score > alpha) {
+                    alpha = score;
+                    if (alpha >= beta) {
+                        if (quiet) {
+                            if (this.killers[ply * 2] !== m) { this.killers[ply * 2 + 1] = this.killers[ply * 2]; this.killers[ply * 2] = m; }
+                            const bonus = depth * depth;
+                            this.bump(us, m, bonus);
+                            for (let q = 0; q < nQuiets - 1; q++) this.bump(us, quiets[q], -bonus);
+                        }
+                        break;
+                    }
                 }
             }
-
-            const moved = engineState.MovePiece(move[0], move[1], move[2]);
-            if (!moved) continue;
-            this.moves++;
-
-            let score = this.quiescence(engineState, -beta, -alpha, qDepth + 1);
-            score = -score;
-
-            engineState.undoMove();
-
-            if (score >= beta) return beta;
-            if (score > alpha) {
-                alpha = score;
-            }
         }
 
-        return alpha;
+        if (legal === 0) return inCheck ? -MATE + ply : 0;
+
+        // Store in the transposition table
+        const flag = best <= origAlpha ? TT_UPPER : best >= beta ? TT_LOWER : TT_EXACT;
+        if (this.ttFlag[idx] === 0 || this.ttAge[idx] !== this.age || depth >= this.ttDepth[idx] ||
+            (this.ttLo[idx] === e.hashLo && this.ttHi[idx] === e.hashHi)) {
+            let s = best;
+            if (s >= MATE_BOUND) s += ply; else if (s <= -MATE_BOUND) s -= ply;
+            this.ttLo[idx] = e.hashLo; this.ttHi[idx] = e.hashHi;
+            this.ttMove[idx] = bestMove;
+            this.ttScore[idx] = s;
+            this.ttDepth[idx] = depth > 127 ? 127 : depth;
+            this.ttFlag[idx] = flag;
+            this.ttAge[idx] = this.age;
+        }
+        return best;
     }
 
-    evaluate(engineState) {
-        const side = engineState.turn === 0 ? 1 : -1;
+    bump(us, m, bonus) {
+        const i = (us << 12) | ((m & 63) << 6) | ((m >> 6) & 63);
+        let v = this.history[i] + bonus;
+        if (v > 16000) v = 16000; else if (v < -16000) v = -16000;
+        this.history[i] = v;
+    }
 
-        // End Condition
-        if (engineState.gameCondition.startsWith('WHITE_WIN')) return (1000000 - (engineState.totalPlies * 2)) * -side;
-        if (engineState.gameCondition.startsWith('BLACK_WIN')) return (-1000000 + (engineState.totalPlies * 2)) * -side;
-        if (engineState.gameCondition.startsWith('DRAW')) return -500 * -side;
+    scoreMoves(e, list, n, scores, ply, ttMove, qs) {
+        const b = e.board, us = e.turn;
+        const k1 = this.killers[ply * 2], k2 = this.killers[ply * 2 + 1];
+        for (let i = 0; i < n; i++) {
+            const m = list[i];
+            if (m === ttMove) { scores[i] = 1 << 30; continue; }
+            const from = m & 63, to = (m >> 6) & 63, promo = (m >> 12) & 7, flag = (m >> 15) & 7;
+            const victim = flag === FLAG_EP ? 1 : (b[to] & 7);
+            if (victim !== 0) scores[i] = (1 << 20) + victim * 16 - (b[from] & 7) + (promo ? promo * 64 : 0);
+            else if (promo) scores[i] = (1 << 20) + promo * 64;
+            else if (m === k1) scores[i] = 1 << 19;
+            else if (m === k2) scores[i] = (1 << 19) - 1;
+            else scores[i] = this.history[(us << 12) | (from << 6) | to];
+        }
+    }
 
-        let mg = 0;
-        let eg = 0;
-        let phase = 0;
+    quiescence(e, alpha, beta, ply, qd) {
+        if ((++this.nodes & 2047) === 0) this.checkTime();
+        if (this.stopped) return 0;
+        if (ply >= MAX_PLY) return evaluate(e);
+        if (e.halfmoveClock >= 100 || e.isInsufficientMaterial()) return 0;
 
-        const rows = engineState.rows;
-        const cols = engineState.cols;
-        const pieces = engineState.pieces;
+        const inCheck = e.inCheck();
+        let best, stand = 0;
+        if (!inCheck) {
+            stand = evaluate(e);
+            if (stand >= beta) return stand;
+            if (stand > alpha) alpha = stand;
+            best = stand;
+        } else {
+            best = -MATE + ply;
+        }
 
-        const whitePawns = pieces['P'].clone();
-        const blackPawns = pieces['p'].clone();
-        const pawnsBB = whitePawns.or(blackPawns);
+        const list = this.moveLists[ply], scores = this.scoreLists[ply];
+        const n = inCheck ? e.genMoves(list, false) : e.genMoves(list, true);
+        this.scoreMoves(e, list, n, scores, ply, 0, true);
 
-        for (const [piece, pieceBB] of Object.entries(pieces)) {
-            const bb = pieceBB.clone();
+        let legal = 0;
+        for (let i = 0; i < n; i++) {
+            let bi = i, bs = scores[i];
+            for (let j = i + 1; j < n; j++) if (scores[j] > bs) { bs = scores[j]; bi = j; }
+            const m = list[bi];
+            list[bi] = list[i]; scores[bi] = scores[i]; list[i] = m; scores[i] = bs;
 
-            const isWhite = engineState.isWhitePiece(piece);
-            const pieceIndex = this.piecesIndexes[piece];
-            const queenIndex = this.piecesIndexes['Q'];
+            if (!inCheck) {
+                // delta pruning
+                const victim = (m >> 15 & 7) === FLAG_EP ? 1 : (e.board[(m >> 6) & 63] & 7);
+                if (stand + PIECE_VALUE[victim] + 200 < alpha && ((m >> 12) & 7) === 0) continue;
+            }
 
-            const mgValues = (this.mgValues[pieceIndex] || 0);
-            const egValues = (this.egValues[pieceIndex] || 0);
-            const mgPst = this.mgPst[pieceIndex];
-            const egPst = this.egPst[pieceIndex];
+            if (!e.makeMove(m)) continue;
+            legal++;
+            const score = -this.quiescence(e, -beta, -alpha, ply + 1, qd + 1);
+            e.unmakeMove();
+            if (this.stopped) return 0;
 
-            const dir = isWhite ? 1 : -1;
-
-            let sq = bb.bitIndex();
-            while (sq >= 0) {
-                const { r, c } = engineState.fromSq(sq);
-
-                // Material
-                mg += dir * mgValues;
-                eg += dir * egValues;
-
-                // PST bonus
-                if (this.engine.isNormal) {
-                    const mgpstValue = isWhite ? mgPst[r][c] : mgPst[rows - 1 - r][c];
-                    const egpstValue = isWhite ? egPst[r][c] : egPst[rows - 1 - r][c];
-                    mg += mgpstValue;
-                    eg += egpstValue;
+            if (score > best) {
+                best = score;
+                if (score > alpha) {
+                    alpha = score;
+                    if (alpha >= beta) break;
                 }
-
-                const pawnsOnFile = pawnsBB.and(ChessEngine.fileMasks[c]).popcount();
-                const ownPawnsOnFile = isWhite ?
-                                        whitePawns.and(ChessEngine.fileMasks[c]).popcount() :
-                                        blackPawns.and(ChessEngine.fileMasks[c]).popcount();
-
-                // Piece Types
-                switch (pieceIndex) {
-                    case 0:
-                        // Promotion proximity
-                        const progress = isWhite ? (rows - 1 - r) / (rows - 1) : r / (rows - 1);
-                        mg += dir * progress * (this.mgValues[queenIndex] || 0) * .5;
-                        eg += dir * Math.pow(progress, 5) * (this.egValues[queenIndex] || 0);
-
-                        // Doubled pawns
-                        if (ownPawnsOnFile > 1) {
-                            const penalty = (ownPawnsOnFile - 1) * 5;
-                            mg += -dir * penalty;
-                        }
-                        break;
-                    case 1:
-                        // Distance to middle
-                        const dr = r - ((rows - 1) / 2);
-                        const dc = c - ((cols - 1) / 2);
-                        const distance = Math.sqrt(dr * dr + dc * dc);
-
-                        mg += dir * -distance * 5;
-                        eg += dir * -distance * 5;
-                        break;
-                    case 2:
-                        break;
-                    case 3:
-                        if (pawnsOnFile === 0) { // Open file bonus
-                            mg += dir * 20;
-                            eg += dir * 40;
-                        } else if (ownPawnsOnFile === 0) { // Semi-open file bonus
-                            mg += dir * 10;
-                            eg += dir * 20;
-                        }
-
-                        const rank = isWhite ? rows - 2 : 1;
-                        if (r == rank) {
-                            mg += dir * 40;
-                            eg += dir * 10;
-                        }
-                        break;
-                    case 4:
-                        break;
-                    case 5:
-                        if (pawnsOnFile === 0) { // Open file bonus
-                            mg += -dir * 35;
-                        } else if (ownPawnsOnFile === 0) { // Semi-open file bonus
-                            mg += -dir * 20;
-                        }
-                        break;
-                }
-
-                phase += this.phaseWeights[pieceIndex];
-
-                bb.clearBit(sq);
-                sq = bb.bitIndex();
             }
         }
 
-        // Castling Rights
-        mg += engineState.castlingRights.whiteKingSide ? 5 : -5;
-        mg += engineState.castlingRights.whiteQueenSide ? 5 : -5;
-        mg += engineState.castlingRights.blackKingSide ? -5 : 5;
-        mg += engineState.castlingRights.blackQueenSide ? -5 : 5;
-
-        // White Bishop Pair
-        if (pieces['B'].and(ChessEngine.lightSquares).popcount() > 0 && pieces['B'].and(ChessEngine.darkSquares).popcount() > 0) {
-            mg += 30;
-            eg += 50;
-        }
-        // Black Bishop Pair
-        if (pieces['b'].and(ChessEngine.lightSquares).popcount() > 0 && pieces['b'].and(ChessEngine.darkSquares).popcount() > 0) {
-            mg -= 30;
-            eg -= 50;
-        }
-
-        // Normalize phase (0 = EG, maxPhase = MG)
-        if (phase > this.maxPhase) phase = this.maxPhase;
-        if (phase < 0) phase = 0;
-
-        // Tapered eval
-        let score = (mg * phase + eg * (this.maxPhase - phase)) >> 8;
-
-        // Discourage long games
-        score -= engineState.totalPlies * 2;
-
-        return score * side;
+        if (inCheck && legal === 0) return -MATE + ply;
+        return best;
     }
 }
