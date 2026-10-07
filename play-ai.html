@@ -13,7 +13,7 @@
 
 <body>
     <div class="back">
-        <button onclick="window.location.href='main.html'"><-</button>
+        <button onclick="window.location.href='main.html'">&lt;-</button>
     </div>
 
     <main class="game-container">
@@ -58,7 +58,7 @@
             <div class="actions">
                 <span>Actions</span>
                 <button id="undo-btn" class="btn">Undo</button>
-                <button id="restart-btn" class="btn" onclick="window.location.reload()">Restart</button>
+                <button class="btn" onclick="window.location.reload()">Restart</button>
                 <button id="switchside-btn" class="btn">Play Black</button>
             </div>
         </div>
@@ -74,8 +74,8 @@
                 <p>by checkmate</p>
             </header>
             <main>
-                <button id="restart-btn" class="btn" onclick="window.location.reload()">Restart</button>
-                <button id="restart-btn" class="btn" onclick="window.location.href='main.html'">Home</button>
+                <button class="btn" onclick="window.location.reload()">Restart</button>
+                <button class="btn" onclick="window.location.href='main.html'">Home</button>
             </main>
         </div>
     </section>
@@ -109,14 +109,20 @@
     window.onload = async (e) => {
         render.BeginPlay();
 
+        document.getElementById('undo-btn').addEventListener('click', () => {
+            const isAITurn = () => (chess.turn === 0 && chess.whiteAI) || (chess.turn === 1 && chess.blackAI);
+
+            chess.undoMove();
+            if (isAITurn() && chess.logs.length > 0) chess.undoMove();
+
+            const ai = chess.turn === 0 ? chess.whiteAI : chess.blackAI;
+            if (ai && chess.gameCondition === 'PLAYING') ai.Play();
+        });
+
         document.getElementById('switchside-btn').addEventListener('click', () => {
             const url = new URL(window.location.href);
             url.searchParams.set('play', white ? 'black' : 'white');
             window.location.href = url.toString();
-        });
-
-        document.getElementById('undo-btn').addEventListener('click', () => {
-            chess.undoMove();
         });
 
         if (!white) {
