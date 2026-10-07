@@ -107,7 +107,7 @@ export class ChessRender {
 
     UpdateSquare(row, col) {
         const sq = this.boardEl.querySelector(`.square[data-row="${row}"][data-col="${col}"]`);
-            if (!sq) return;
+        if (!sq) return;
 
         const piece = this.engine.getPiece(row, col);
 
@@ -132,12 +132,10 @@ export class ChessRender {
             const { r: tr, c: tc } = this.engine.fromSq(lastMove.toSq);
 
             const fsq = this.boardEl.querySelector(`.square[data-row="${fr}"][data-col="${fc}"]`);
-                if (!fsq) return;
             const tsq = this.boardEl.querySelector(`.square[data-row="${tr}"][data-col="${tc}"]`);
-                if (!tsq) return;
-            
-            fsq.classList.add('light-selected');
-            tsq.classList.add('selected');
+
+            if (fsq) fsq.classList.add('light-selected');
+            if (tsq) tsq.classList.add('selected');
         }
 
         // Captures
@@ -210,12 +208,14 @@ export class ChessRender {
 
             this.endScreen.children[0].children[1].children[0].textContent = 'Draw!';
             this.endScreen.children[0].children[1].children[1].textContent = 'by ' + this.engine.gameCondition.split('_').slice(1).join(' ').toLowerCase();
+        } else {
+            this.endScreen.classList.add('hidden');
         }
     }
 
     AddToLog() {
         const notaion = this.engine.getMoveNotation(this.engine.logs[this.engine.logs.length - 1]);
-            if (notaion == '' || !notaion) return;
+        if (notaion == '' || !notaion) return;
 
         const li = document.createElement('li');
         li.textContent = notaion;
@@ -226,7 +226,8 @@ export class ChessRender {
     }
 
     RemoveFromLog() {
-        this.logDisplay.children[this.logDisplay.children.length - 1].remove();
+        const last = this.logDisplay.lastElementChild;
+        if (last) last.remove();
     }
 
 
@@ -286,12 +287,12 @@ export class ChessRender {
         // Case 1: not his turn -> deselect
         if ((this.engine.turn == 0 && this.engine.whiteAI != null) || (this.engine.turn == 1 && this.engine.blackAI != null)) {
             console.log('AIs turn');
-
             return false;
         }
 
-        const row = +e.target.dataset.row;
-        const col = +e.target.dataset.col;
+        const row = +e.target.dataset?.row;
+        const col = +e.target.dataset?.col;
+        if (!Number.isInteger(row) || !Number.isInteger(col)) return false;
 
         console.log('Square: ', this.engine.toSq(row, col));
 
@@ -317,17 +318,14 @@ export class ChessRender {
         const piece = this.engine.getPiece(row, col);
 
         // Case 4: click on empty square -> clear selection
-        if (this.engine.isEmptyPiece
-            (piece)) {
+        if (this.engine.isEmptyPiece(piece)) {
             console.log('Clicked empty -> clear selection');
-
             return false;
         }
 
         // Case 5: click on piece of the oponent → clear selection
         if ((this.engine.isWhitePiece(piece) && this.engine.turn != 0) || (this.engine.isBlackPiece(piece) && this.engine.turn != 1)) {
             console.log('Clicked oponent piece -> clear selection');
-
             return false;
         }
 
@@ -345,7 +343,7 @@ export class ChessRender {
         const moves = this.engine.getLegalMoves(this.engine.toSq(row, col));
         console.log('getLegalMoves:', moves);
 
-        moves.forEach(([ fsq, tsq, promote ]) => {
+        moves.forEach(([fsq, tsq, promote]) => {
             const { r, c } = this.engine.fromSq(tsq);
 
             const sqEl = document.querySelector(`.square[data-row="${r}"][data-col="${c}"]`);
@@ -379,7 +377,7 @@ export class ChessRender {
 
             if (promoPiece == '.') {
                 promoBtn.style.setProperty('--bg-img', ``);
-                return;
+                continue;
             }
 
             promoBtn.style.setProperty('--bg-img', `url(${this.assetPrefix + (isBlack ? 'b' : 'w') + promoPiece.toLowerCase()}.png)`);
@@ -396,14 +394,14 @@ export class ChessRender {
 
     onPromoClick(e) {
         const newPiece = e.target.dataset.piece;
-            if (!newPiece) return;
+        if (!newPiece) return;
 
         const fromSq = this.engine.toSq(this.lastPromote?.fr, this.lastPromote?.fc);
         const toSq = this.engine.toSq(this.lastPromote?.tr, this.lastPromote?.tc);
 
-        console.log('Promote pawn to', newPiece);
         this.engine.MovePiece(fromSq, toSq, newPiece);
 
+        console.log('Promote pawn to', newPiece);
         this.lastPromote = null;
         this.promotionScreen.classList.add('hidden');
         e.target.blur();
@@ -411,6 +409,7 @@ export class ChessRender {
 
 
     PlaySound(type = 0) {
-        this.playableSounds[type].play();
+        const p = this.playableSounds[type]?.play();
+        if (p && p.catch) p.catch(() => { });
     }
 }
