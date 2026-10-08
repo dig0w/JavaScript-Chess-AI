@@ -1,6 +1,6 @@
 {
   "name": "JavaScript-Chess-AI",
-  "version": "2.5",
+  "version": "3.0",
   "type": "module",
   "main": "UCI.js",
   "scripts": {
